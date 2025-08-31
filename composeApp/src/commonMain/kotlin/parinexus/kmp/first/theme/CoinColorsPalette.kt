@@ -1,4 +1,4 @@
-package parnexus.kmp.first.theme
+package parinexus.kmp.first.theme
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
