@@ -1,4 +1,4 @@
-package parnexus.kmp.first.theme
+package parinexus.kmp.first.theme
 
 import androidx.compose.ui.graphics.Color
 
