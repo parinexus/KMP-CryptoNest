@@ -1,4 +1,4 @@
-package parnexus.kmp.first
+package parinexus.kmp.first
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
