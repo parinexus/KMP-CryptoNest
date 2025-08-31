@@ -1,4 +1,4 @@
-package parnexus.kmp.first
+package parinexus.kmp.first
 
 interface Platform {
     val name: String

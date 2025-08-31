@@ -1,4 +1,4 @@
-package parnexus.kmp.first.theme
+package parinexus.kmp.first.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

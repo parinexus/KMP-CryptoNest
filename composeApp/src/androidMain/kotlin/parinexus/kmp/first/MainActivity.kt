@@ -1,4 +1,4 @@
-package parnexus.kmp.first
+package parinexus.kmp.first
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
