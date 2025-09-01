@@ -90,7 +90,12 @@ android {
             path = "local.properties",
             propertyName = "API_KEY",
         )
+        val baseUrl = project.loadLocalProperty(
+            path = "local.properties",
+            propertyName = "BASE_URL",
+        )
         buildConfigField("String", "API_KEY", "\"$apiKey\"")
+        buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
     }
     packaging {
         resources {

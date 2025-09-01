@@ -11,6 +11,12 @@ actual object AppSecrets {
             fileType = "plist",
             valueKey = "API_KEY"
         ) ?: ""
+    actual val baseUrl: String
+        get() = getStringResource(
+            filename = "Secrets",
+            fileType = "plist",
+            valueKey = "BASE_URL"
+        ) ?: ""
 }
 
 internal fun getStringResource(
