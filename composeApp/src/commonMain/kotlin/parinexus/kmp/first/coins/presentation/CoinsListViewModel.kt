@@ -27,7 +27,6 @@ class CoinsListViewModel(
             initialValue = CoinsState()
         )
 
-
     suspend fun loadCoins() {
         _state.update { it.copy(isLoading = true) }
 

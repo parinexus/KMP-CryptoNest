@@ -15,20 +15,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CoinsGridScreen(
-    coins: List<CoinUiModel>,
     onCoinClicked: (String) -> Unit,
 ) {
+    val coinViewModel = koinViewModel<CoinsListViewModel>()
+    val state by coinViewModel.state.collectAsStateWithLifecycle()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -61,7 +65,7 @@ fun CoinsGridScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            items(coins, key = { it.id }) { coin ->
+            items(state.coins, key = { it.id }) { coin ->
                 CoinGridItem(
                     coin = coin,
                     onCoinClicked = onCoinClicked
@@ -146,12 +150,6 @@ fun CoinGridItem(
 @Composable
 private fun CoinsGridPreview() {
     CoinsGridScreen(
-        coins = listOf(
-            CoinUiModel("btc", "Bitcoin", "BTC", "", "$65,000", "+2.5%", true),
-            CoinUiModel("eth", "Ethereum", "ETH", "", "$3,500", "-1.2%", false),
-            CoinUiModel("sol", "Solana", "SOL", "", "$180", "+5.8%", true),
-            CoinUiModel("ada", "Cardano", "ADA", "", "$0.45", "-0.7%", false),
-        ),
         onCoinClicked = {}
     )
 }
