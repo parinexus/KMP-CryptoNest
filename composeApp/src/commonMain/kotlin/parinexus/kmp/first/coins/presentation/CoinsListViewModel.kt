@@ -20,6 +20,7 @@ class CoinsListViewModel(
     private val _state = MutableStateFlow(CoinsState())
     val state = _state
         .onStart {
+
             loadCoins()
         }.stateIn(
             scope = viewModelScope,
