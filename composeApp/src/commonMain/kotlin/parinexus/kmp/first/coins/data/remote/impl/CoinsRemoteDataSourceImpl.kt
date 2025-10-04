@@ -17,19 +17,19 @@ class CoinsRemoteDataSourceImpl(
 
     override suspend fun getListOfCoins(): Result<CoinsResponseDto, DataError.Remote> {
         return safeCall {
-            httpClient.get("${AppSecrets.baseUrl}/coins")
+            httpClient.get("coins")
         }
     }
 
     override suspend fun getPriceHistory(coinId: String): Result<CoinPriceHistoryResponseDto, DataError.Remote> {
         return safeCall {
-            httpClient.get("${AppSecrets.baseUrl}/coin/$coinId/history")
+            httpClient.get("coin/$coinId/history")
         }
     }
 
     override suspend fun getCoinById(coinId: String): Result<CoinDetailsResponseDto, DataError.Remote> {
         return safeCall {
-            httpClient.get("${AppSecrets.baseUrl}/coin/$coinId")
+            httpClient.get("coin/$coinId")
         }
     }
 }
