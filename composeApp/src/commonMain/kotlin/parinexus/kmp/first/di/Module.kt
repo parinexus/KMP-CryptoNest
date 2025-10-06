@@ -32,7 +32,7 @@ val sharedModule = module {
 
     // core
     single<HttpClient> { HttpClientFactory.create(get()) }
-    viewModel { CoinsListViewModel(get()) }
+    viewModel { CoinsListViewModel(get(), get()) }
     singleOf(::FetchCoinsListUseCase)
     singleOf(::FetchCoinDetailsUseCase)
     singleOf(::FetchCoinPriceHistoryUseCase)

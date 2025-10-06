@@ -9,18 +9,20 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import parinexus.kmp.first.core.domain.Result
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import parinexus.kmp.first.coins.domain.FetchCoinPriceHistoryUseCase
 import parinexus.kmp.first.core.util.formatFiat
 import parinexus.kmp.first.core.util.formatPercentage
 import parinexus.kmp.first.core.util.toUiText
 
 class CoinsListViewModel(
     private val fetchCoinsListUseCase: FetchCoinsListUseCase,
+    private val fetchCoinPriceHistoryUseCase: FetchCoinPriceHistoryUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CoinsState())
     val state = _state
         .onStart {
-
             loadCoins()
         }.stateIn(
             scope = viewModelScope,
@@ -28,7 +30,7 @@ class CoinsListViewModel(
             initialValue = CoinsState()
         )
 
-    suspend fun loadCoins() {
+    private suspend fun loadCoins() {
         _state.update { it.copy(isLoading = true) }
 
         when (val response = fetchCoinsListUseCase.execute()) {
@@ -61,6 +63,50 @@ class CoinsListViewModel(
                     )
                 }
             }
+        }
+    }
+
+    fun onCoinLongPressed(coinId: String) {
+        _state.update {
+            it.copy(
+                chartState = UiChartState(
+                    sparkLine = emptyList(),
+                    isLoading = true,
+                )
+            )
+        }
+
+        viewModelScope.launch {
+            when(val priceHistory = fetchCoinPriceHistoryUseCase.execute(coinId)) {
+                is Result.Success -> {
+                    _state.update { currentState ->
+                        currentState.copy(
+                            chartState = UiChartState(
+                                sparkLine = priceHistory.data.sortedBy { it.timestamp }.map { it.price },
+                                isLoading = false,
+                                coinName = _state.value.coins.find { it.id == coinId }?.name.orEmpty(),
+                            )
+                        )
+                    }
+                }
+                is Result.Error -> {
+                    _state.update { currentState ->
+                        currentState.copy(
+                            chartState = UiChartState(
+                                sparkLine = emptyList(),
+                                isLoading = false,
+                                coinName = "",
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun onDismissChart() {
+        _state.update {
+            it.copy(chartState = null)
         }
     }
 }
