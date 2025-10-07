@@ -1,5 +1,6 @@
 package parinexus.kmp.first.di
 
+import androidx.room.RoomDatabase
 import io.ktor.client.HttpClient
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
@@ -14,6 +15,8 @@ import parinexus.kmp.first.coins.domain.FetchCoinPriceHistoryUseCase
 import parinexus.kmp.first.coins.domain.FetchCoinsListUseCase
 import parinexus.kmp.first.coins.domain.api.CoinsRemoteDataSource
 import parinexus.kmp.first.coins.presentation.CoinsListViewModel
+import parinexus.kmp.first.core.database.portfolio.PortfolioDatabase
+import parinexus.kmp.first.core.database.portfolio.getPortfolioDatabase
 import parinexus.kmp.first.core.network.HttpClientFactory
 
 fun initKoin(config: KoinAppDeclaration? = null) =
@@ -32,6 +35,11 @@ val sharedModule = module {
 
     // core
     single<HttpClient> { HttpClientFactory.create(get()) }
+
+    // portfolio
+    single {
+        getPortfolioDatabase(get<RoomDatabase.Builder<PortfolioDatabase>>())
+    }
     viewModel { CoinsListViewModel(get(), get()) }
     singleOf(::FetchCoinsListUseCase)
     singleOf(::FetchCoinDetailsUseCase)
