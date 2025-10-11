@@ -4,8 +4,11 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import parinexus.kmp.first.portfolio.data.local.PortfolioCoinEntity
 import parinexus.kmp.first.portfolio.data.local.PortfolioDao
+import parinexus.kmp.first.portfolio.data.local.UserBalanceDao
+import parinexus.kmp.first.portfolio.data.local.UserBalanceEntity
 
-@Database(entities = [PortfolioCoinEntity::class], version = 1)
+@Database(entities = [PortfolioCoinEntity::class, UserBalanceEntity::class], version = 2)
 abstract class PortfolioDatabase: RoomDatabase() {
     abstract fun portfolioDao(): PortfolioDao
+    abstract fun userBalanceDao(): UserBalanceDao
 }
