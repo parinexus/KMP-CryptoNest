@@ -1,8 +1,10 @@
 package parinexus.kmp.first.portfolio.data
 
+import androidx.sqlite.SQLiteException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import parinexus.kmp.first.coins.domain.api.CoinsRemoteDataSource
@@ -14,11 +16,13 @@ import parinexus.kmp.first.core.domain.onSuccess
 import parinexus.kmp.first.portfolio.data.local.PortfolioDao
 import parinexus.kmp.first.portfolio.data.local.UserBalanceDao
 import parinexus.kmp.first.portfolio.data.local.UserBalanceEntity
+import parinexus.kmp.first.portfolio.data.mapper.toPortfolioCoinEntity
 import parinexus.kmp.first.portfolio.data.mapper.toPortfolioCoinModel
 import parinexus.kmp.first.portfolio.domain.PortfolioCoinModel
 import parinexus.kmp.first.portfolio.domain.PortfolioRepository
 import kotlin.collections.emptyList
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class PortfolioRepositoryImpl(
     val portfolioDao: PortfolioDao,
     val userBalanceDao: UserBalanceDao,
@@ -31,7 +35,6 @@ class PortfolioRepositoryImpl(
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun getOwnedCoins(): Flow<Result<List<PortfolioCoinModel>, DataError.Remote>> {
         return portfolioDao.getAllOwnedCoins().flatMapLatest { portfolioCoinEntities ->
             if (portfolioCoinEntities.isEmpty()) {
@@ -81,26 +84,71 @@ class PortfolioRepositoryImpl(
     }
 
     override suspend fun insertPortfolioCoin(portfolioCoinModel: PortfolioCoinModel): EmptyResult<DataError.Local> {
-        TODO("Not yet implemented")
+        try {
+            portfolioDao.insert(portfolioCoinModel.toPortfolioCoinEntity())
+            return Result.Success(Unit)
+
+        } catch (e: SQLiteException) {
+            return Result.Error(DataError.Local.DISK_FULL)
+        }
     }
 
     override suspend fun removePortfolioCoin(coinId: String) {
-        TODO("Not yet implemented")
+        portfolioDao.deletePortfolioItem(coinId)
     }
 
     override fun calculatePortfolioValue(): Flow<Result<Double, DataError.Remote>> {
-        TODO("Not yet implemented")
+        return portfolioDao.getAllOwnedCoins().flatMapLatest { portfolioCoinEntities ->
+            if (portfolioCoinEntities.isEmpty()) {
+                flow {
+                    emit(Result.Success(0.0))
+                }
+
+            } else {
+                flow {
+                    val apiResult = coinsRemoteDataSource.getListOfCoins()
+                    apiResult.onError { error ->
+                        emit(Result.Error(error))
+                    }.onSuccess {
+                        val totalValue = portfolioCoinEntities.sumOf { portfolioCoinEntity ->
+                            val coinPrice =
+                                it.data.coins.find { it.uuid == portfolioCoinEntity.coinId }?.price
+                                    ?: 0.0
+                            portfolioCoinEntity.amountOwned * coinPrice
+                        }
+                        emit(Result.Success(totalValue))
+                    }
+                }
+            }.catch {
+                emit(Result.Error(error = DataError.Remote.UNKNOWN))
+            }
+        }
     }
 
     override fun totalCashBalanceFlow(): Flow<Result<Double, DataError.Remote>> {
-        TODO("Not yet implemented")
+        return combine(
+            totalBalanceFlow(),
+            calculatePortfolioValue()
+        ) { cashBalance, portfolioValue ->
+            when (portfolioValue) {
+                is Result.Success -> {
+                    Result.Success(cashBalance + portfolioValue.data)
+                }
+
+                is Result.Error -> {
+                    Result.Error(portfolioValue.error)
+                }
+            }
+        }
     }
 
     override fun totalBalanceFlow(): Flow<Double> {
-        TODO("Not yet implemented")
+        return flow {
+            emit(userBalanceDao.getCashBalance() ?: 10000.0)
+        }
     }
 
     override suspend fun updateCashBalance(newBalance: Double) {
-        TODO("Not yet implemented")
+        userBalanceDao.updateCashBalance(newBalance)
     }
 }
