@@ -18,6 +18,9 @@ import parinexus.kmp.first.coins.presentation.CoinsListViewModel
 import parinexus.kmp.first.core.database.portfolio.PortfolioDatabase
 import parinexus.kmp.first.core.database.portfolio.getPortfolioDatabase
 import parinexus.kmp.first.core.network.HttpClientFactory
+import parinexus.kmp.first.portfolio.data.PortfolioRepositoryImpl
+import parinexus.kmp.first.portfolio.domain.PortfolioRepository
+import parinexus.kmp.first.portfolio.presentation.PortfolioViewModel
 
 fun initKoin(config: KoinAppDeclaration? = null) =
     startKoin {
@@ -40,6 +43,10 @@ val sharedModule = module {
     single {
         getPortfolioDatabase(get<RoomDatabase.Builder<PortfolioDatabase>>())
     }
+    singleOf(::PortfolioRepositoryImpl).bind<PortfolioRepository>()
+    single { get<PortfolioDatabase>().portfolioDao() }
+    single { get<PortfolioDatabase>().userBalanceDao() }
+    viewModel { PortfolioViewModel(get()) }
     viewModel { CoinsListViewModel(get(), get()) }
     singleOf(::FetchCoinsListUseCase)
     singleOf(::FetchCoinDetailsUseCase)
