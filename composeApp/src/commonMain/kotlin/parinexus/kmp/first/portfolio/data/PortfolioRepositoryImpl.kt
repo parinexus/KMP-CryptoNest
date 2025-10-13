@@ -35,7 +35,7 @@ class PortfolioRepositoryImpl(
         }
     }
 
-    override suspend fun getOwnedCoins(): Flow<Result<List<PortfolioCoinModel>, DataError.Remote>> {
+    override fun getOwnedCoins(): Flow<Result<List<PortfolioCoinModel>, DataError.Remote>> {
         return portfolioDao.getAllOwnedCoins().flatMapLatest { portfolioCoinEntities ->
             if (portfolioCoinEntities.isEmpty()) {
                 flow {
@@ -125,9 +125,9 @@ class PortfolioRepositoryImpl(
         }
     }
 
-    override fun totalCashBalanceFlow(): Flow<Result<Double, DataError.Remote>> {
+    override fun totalBalanceFlow(): Flow<Result<Double, DataError.Remote>> {
         return combine(
-            totalBalanceFlow(),
+            totalCashBalanceFlow(),
             calculatePortfolioValue()
         ) { cashBalance, portfolioValue ->
             when (portfolioValue) {
@@ -142,7 +142,7 @@ class PortfolioRepositoryImpl(
         }
     }
 
-    override fun totalBalanceFlow(): Flow<Double> {
+    override fun totalCashBalanceFlow(): Flow<Double> {
         return flow {
             emit(userBalanceDao.getCashBalance() ?: 10000.0)
         }

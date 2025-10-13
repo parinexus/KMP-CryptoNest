@@ -8,13 +8,13 @@ import parinexus.kmp.first.core.domain.Result
 interface PortfolioRepository {
 
     suspend fun initUserBalance()
-    suspend fun getOwnedCoins(): Flow<Result<List<PortfolioCoinModel>, DataError.Remote>>
+    fun getOwnedCoins(): Flow<Result<List<PortfolioCoinModel>, DataError.Remote>>
     suspend fun getPortfolioCoinById(coinId: String): Result<PortfolioCoinModel?, DataError.Remote>
     suspend fun insertPortfolioCoin(portfolioCoinModel: PortfolioCoinModel): EmptyResult<DataError.Local>
     suspend fun removePortfolioCoin(coinId: String)
 
     fun calculatePortfolioValue(): Flow<Result<Double, DataError.Remote>>
-    fun totalCashBalanceFlow(): Flow<Result<Double, DataError.Remote>>
-    fun totalBalanceFlow(): Flow<Double>
+    fun totalBalanceFlow(): Flow<Result<Double, DataError.Remote>>
+    fun totalCashBalanceFlow(): Flow<Double>
     suspend fun updateCashBalance(newBalance: Double)
 }
