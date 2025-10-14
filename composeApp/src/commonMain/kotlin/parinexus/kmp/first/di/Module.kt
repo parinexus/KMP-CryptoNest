@@ -22,6 +22,7 @@ import parinexus.kmp.first.portfolio.data.PortfolioRepositoryImpl
 import parinexus.kmp.first.portfolio.domain.PortfolioRepository
 import parinexus.kmp.first.portfolio.presentation.PortfolioViewModel
 import parinexus.kmp.first.trade.domain.BuyCoinUseCase
+import parinexus.kmp.first.trade.domain.SellCoinUseCase
 
 fun initKoin(config: KoinAppDeclaration? = null) =
     startKoin {
@@ -56,4 +57,5 @@ val sharedModule = module {
 
     // trade
     singleOf(::BuyCoinUseCase)
+    singleOf(::SellCoinUseCase)
 }
