@@ -7,7 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
 @Suppress("NO_ACTUAL_FOR_EXPECT")
-expect abstract class PortfolioDatabaseCreator : RoomDatabaseConstructor<PortfolioDatabase>
+expect object PortfolioDatabaseCreator : RoomDatabaseConstructor<PortfolioDatabase>
 
 fun getPortfolioDatabase(
     builder: RoomDatabase.Builder<PortfolioDatabase>
