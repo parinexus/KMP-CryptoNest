@@ -49,6 +49,8 @@ val sharedModule = module {
     single { get<PortfolioDatabase>().portfolioDao() }
     single { get<PortfolioDatabase>().userBalanceDao() }
     viewModel { PortfolioViewModel(get()) }
+
+    //coins list
     viewModel { CoinsListViewModel(get(), get()) }
     singleOf(::FetchCoinsListUseCase)
     singleOf(::FetchCoinDetailsUseCase)
