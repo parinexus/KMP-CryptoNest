@@ -2,7 +2,7 @@ package parinexus.kmp.first.portfolio.domain
 
 import parinexus.kmp.first.core.domain.coin.Coin
 
-class PortfolioCoinModel(
+data class PortfolioCoinModel(
     val coin: Coin,
     val performancePercent: Double,
     val averagePurchasePrice: Double,

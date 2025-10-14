@@ -21,6 +21,7 @@ import parinexus.kmp.first.core.network.HttpClientFactory
 import parinexus.kmp.first.portfolio.data.PortfolioRepositoryImpl
 import parinexus.kmp.first.portfolio.domain.PortfolioRepository
 import parinexus.kmp.first.portfolio.presentation.PortfolioViewModel
+import parinexus.kmp.first.trade.domain.BuyCoinUseCase
 
 fun initKoin(config: KoinAppDeclaration? = null) =
     startKoin {
@@ -52,4 +53,7 @@ val sharedModule = module {
     singleOf(::FetchCoinDetailsUseCase)
     singleOf(::FetchCoinPriceHistoryUseCase)
     singleOf(::CoinsRemoteDataSourceImpl).bind<CoinsRemoteDataSource>()
+
+    // trade
+    singleOf(::BuyCoinUseCase)
 }
