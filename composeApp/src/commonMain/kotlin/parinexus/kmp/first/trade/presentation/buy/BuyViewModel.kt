@@ -1,4 +1,4 @@
-package parinexus.kmp.first.trade.presentation
+package parinexus.kmp.first.trade.presentation.buy
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,11 +11,11 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import parinexus.kmp.first.coins.domain.FetchCoinDetailsUseCase
-import parinexus.kmp.first.portfolio.domain.PortfolioRepository
-import parinexus.kmp.first.trade.domain.BuyCoinUseCase
 import parinexus.kmp.first.core.domain.Result
 import parinexus.kmp.first.core.util.formatFiat
 import parinexus.kmp.first.core.util.toUiText
+import parinexus.kmp.first.portfolio.domain.PortfolioRepository
+import parinexus.kmp.first.trade.domain.BuyCoinUseCase
 import parinexus.kmp.first.trade.presentation.common.TradeState
 import parinexus.kmp.first.trade.presentation.common.UiTradeCoinItem
 import parinexus.kmp.first.trade.presentation.mapper.toCoin
@@ -41,7 +41,7 @@ class BuyViewModel(
         getCoinDetails(balance)
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(),
+        started = SharingStarted.Companion.WhileSubscribed(),
         initialValue = TradeState(isLoading = true)
     )
 
