@@ -5,14 +5,23 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,6 +29,7 @@ import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import parinexus.kmp.first.theme.LocalCoinColorsPalette
+import parinexus.kmp.first.trade.presentation.common.component.rememberCurrencyVisualTransformation
 
 enum class TradeType {
     BUY, SELL
@@ -85,26 +95,7 @@ fun TradeScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            OutlinedTextField(
-                value = state.amount,
-                onValueChange = onAmountChange,
-                placeholder = { Text("Enter amount") },
-                singleLine = true,
-                textStyle = LocalTextStyle.current.copy(
-                    textAlign = TextAlign.Center,
-                    fontSize = 18.sp
-                ),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = actionColor,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                    cursorColor = actionColor,
-                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground
-                ),
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .clip(RoundedCornerShape(12.dp))
-            )
+            CenteredDollarTextField(amountText = state.amount, onAmountChange = onAmountChange)
 
             Text(
                 text = "Available: ${state.availableAmount}",
@@ -190,6 +181,54 @@ fun PreviewTradeScreenSell() {
         tradeType = TradeType.SELL,
         onAmountChange = {},
         onSubmitClicked = {}
+    )
+}
+
+
+
+@Composable
+fun CenteredDollarTextField(
+    modifier: Modifier = Modifier,
+    amountText: String,
+    onAmountChange: (String) -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    val displayText = amountText.trimStart('$')
+    val currencyVisualTransformation = rememberCurrencyVisualTransformation()
+
+    BasicTextField(
+        value = displayText,
+        onValueChange = { newValue ->
+            val trimmed = newValue.trimStart('0').trim { it.isDigit().not() }
+            if (trimmed.isEmpty() || trimmed.toInt() <= 10000) {
+                onAmountChange(trimmed)
+            }
+        },
+        modifier = modifier
+            .focusRequester(focusRequester)
+            .padding(16.dp),
+        textStyle = TextStyle(
+            color = MaterialTheme.colorScheme.onBackground,
+            fontSize = 24.sp,
+            textAlign = TextAlign.Center
+        ),
+        keyboardOptions = KeyboardOptions.Default.copy(
+            keyboardType = KeyboardType.Number
+        ),
+        decorationBox = { innerTextField ->
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.height(56.dp).wrapContentWidth()
+            ) {
+                innerTextField()
+            }
+        },
+        cursorBrush = SolidColor(Color.White),
+        visualTransformation = currencyVisualTransformation,
     )
 }
 
