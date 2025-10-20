@@ -2,10 +2,12 @@ package parinexus.kmp.first.trade.presentation.sell
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -16,6 +18,7 @@ import parinexus.kmp.first.trade.presentation.common.TradeState
 import parinexus.kmp.first.core.domain.Result
 import parinexus.kmp.first.core.util.formatFiat
 import parinexus.kmp.first.core.util.toUiText
+import parinexus.kmp.first.trade.presentation.buy.BuyEvents
 import parinexus.kmp.first.trade.presentation.common.UiTradeCoinItem
 import parinexus.kmp.first.trade.presentation.mapper.toCoin
 
@@ -23,9 +26,8 @@ class SellViewModel(
     private val getCoinDetailsUseCase: FetchCoinDetailsUseCase,
     private val portfolioRepository: PortfolioRepository,
     private val sellCoinUseCase: SellCoinUseCase,
+    private val coinId: String,
 ) : ViewModel() {
-
-    private val tempCoinId = "1" // TODO: will be removed
 
     private val _amount = MutableStateFlow("")
     private val _state = MutableStateFlow(TradeState())
@@ -37,7 +39,7 @@ class SellViewModel(
             amount = amount
         )
     }.onStart {
-        when (val portfolioCoinResponse = portfolioRepository.getPortfolioCoinById(tempCoinId)) {
+        when (val portfolioCoinResponse = portfolioRepository.getPortfolioCoinById(coinId)) {
             is Result.Success -> {
                 portfolioCoinResponse.data?.ownedAmountInUnit?.let {
                     getCoinDetails(it)
@@ -59,12 +61,15 @@ class SellViewModel(
         initialValue = TradeState(isLoading = true)
     )
 
+    private val _events = Channel<SellEvents>(capacity = Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
     fun onAmountChanged(amount: String) {
         _amount.value = amount
     }
 
     private suspend fun getCoinDetails(ownedAmountInUnit: Double) {
-        when (val coinResponse = getCoinDetailsUseCase.execute(tempCoinId)) {
+        when (val coinResponse = getCoinDetailsUseCase.execute(coinId)) {
             is Result.Success -> {
                 val availableAmountInFiat = ownedAmountInUnit * coinResponse.data.price
                 _state.update {
@@ -102,7 +107,7 @@ class SellViewModel(
             )
             when (sellCoinResponse) {
                 is Result.Success -> {
-                    // TODO: add event and navigation
+                    _events.send(SellEvents.SellSuccess)
                 }
 
                 is Result.Error -> {
@@ -116,4 +121,8 @@ class SellViewModel(
             }
         }
     }
+}
+
+sealed interface SellEvents {
+    data object SellSuccess : SellEvents
 }
