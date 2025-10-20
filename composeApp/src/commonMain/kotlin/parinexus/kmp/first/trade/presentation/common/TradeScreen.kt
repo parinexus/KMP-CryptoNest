@@ -52,6 +52,7 @@ fun TradeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
