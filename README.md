@@ -43,13 +43,13 @@ build.gradle.kts         # Gradle settings and dependencies
 * **JDK 17** and **Gradle 8.x**
 * **Android Studio Hedgehog** (or newer) with Kotlin Multiplatform plugin
 * **Xcode 15** for iOS builds
-* **API key** from [Coinranking API](https://developers.coinranking.com/api/documentation/coins/coin-details)
+* **API key** from [Coinranking API](https://account.coinranking.com/dashboard/api)
 
 ---
 
 ## 🔑 API Key and Base URL Configuration
 
-You must obtain your **API key** from **[Coinranking Developers](https://developers.coinranking.com/api/documentation/coins/coin-details)**.
+You must obtain your **API key** from **[Coinranking Developers](https://account.coinranking.com/dashboard/api)**.
 Then configure it for both Android and iOS as follows:
 
 ### **Android**
