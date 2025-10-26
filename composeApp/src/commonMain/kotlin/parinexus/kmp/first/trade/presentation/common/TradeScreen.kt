@@ -35,6 +35,7 @@ enum class TradeType {
     BUY, SELL
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TradeScreen(
     state: TradeState,
@@ -48,92 +49,114 @@ fun TradeScreen(
     val actionColor = if (isBuy) colors.profitGreen else colors.lossRed
     val titleText = if (isBuy) "Buy Amount" else "Sell Amount"
     val buttonText = if (isBuy) "Buy Now" else "Sell Now"
+    val emoji = if (isBuy) "💰" else "📉"
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .imePadding()
-            .background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(50)
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "$emoji ${if (isBuy) "Buy" else "Sell"} ${state.coin?.symbol ?: ""}",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
                     )
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-            ) {
-                AsyncImage(
-                    model = state.coin?.iconUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(50)
+                        )
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                ) {
+                    AsyncImage(
+                        model = state.coin?.iconUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = state.coin?.name ?: "Coin",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
                 Text(
-                    text = state.coin?.name ?: "Coin",
-                    style = MaterialTheme.typography.labelLarge,
+                    text = titleText,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
                     color = MaterialTheme.colorScheme.onBackground
                 )
-            }
 
-            Text(
-                text = titleText,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onBackground
-            )
+                CenteredDollarTextField(amountText = state.amount, onAmountChange = onAmountChange)
 
-            CenteredDollarTextField(amountText = state.amount, onAmountChange = onAmountChange)
-
-            Text(
-                text = "Available: ${state.availableAmount}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            if (state.error != null) {
                 Text(
-                    text = stringResource(resource = state.error),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colors.lossRed,
-                    modifier = Modifier.padding(top = 4.dp)
+                    text = "Available: ${state.availableAmount}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                if (state.error != null) {
+                    Text(
+                        text = stringResource(resource = state.error),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.lossRed,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+
+            Button(
+                enabled = state.amount.isNotEmpty(),
+                onClick = onSubmitClicked,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = actionColor,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(28.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp)
+                    .fillMaxWidth(0.9f)
+                    .height(54.dp)
+            ) {
+                Text(
+                    text = buttonText,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
                 )
             }
-        }
-
-        Button(
-            onClick = onSubmitClicked,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = actionColor,
-                contentColor = Color.White
-            ),
-            shape = RoundedCornerShape(28.dp),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 32.dp)
-                .fillMaxWidth(0.9f)
-                .height(54.dp)
-        ) {
-            Text(
-                text = buttonText,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
-            )
         }
     }
 }
