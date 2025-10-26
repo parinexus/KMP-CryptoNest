@@ -104,5 +104,3 @@ Then configure it for both Android and iOS as follows:
 * The API key and base URL are required for app functionality.
 
 ---
-
-Would you like me to make it look even more polished with badges (like `KMP`, `Compose`, `Ktor`, etc.) and emoji headers (📦, 🔐, ⚙️) for GitHub presentation?
