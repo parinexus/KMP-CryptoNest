@@ -1,7 +1,9 @@
 package parinexus.kmp.first
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -25,6 +27,12 @@ fun App() {
     val navController: NavHostController = rememberNavController()
 
     CoinTheme {
+        SetSystemBarsColor(
+            statusBarColor = MaterialTheme.colorScheme.primary,
+            navigationBarColor = MaterialTheme.colorScheme.background,
+            darkIcons = true
+        )
+
         NavHost(
             navController = navController,
             startDestination = Portfolio,
