@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,6 +40,7 @@ import coil3.compose.AsyncImage
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
 import parinexus.kmp.first.coins.presentation.component.PerformanceChart
+import parinexus.kmp.first.core.testing.CoinTestTags
 import parinexus.kmp.first.theme.LocalCoinColorsPalette
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -79,7 +81,8 @@ fun CoinsGridScreen(
                     Text(
                         text = "Crypto Dashboard",
                         style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.testTag(CoinTestTags.COINS_DASHBOARD_TITLE),
                     )
                 }
             }
@@ -103,6 +106,7 @@ fun CoinGridItem(
 ) {
     Surface(
         modifier = Modifier
+            .testTag(CoinTestTags.coinGridItem(coin.id))
             .fillMaxWidth()
             .combinedClickable(
                 onLongClick = { onCoinLongPressed(coin.id) },
@@ -184,7 +188,9 @@ fun CoinChartDialog(
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(CoinTestTags.COIN_CHART_DIALOG),
         onDismissRequest = onDismiss,
         title = {
             Text(
@@ -214,7 +220,8 @@ fun CoinChartDialog(
         confirmButton = {},
         dismissButton = {
             Button(
-                onClick = onDismiss
+                onClick = onDismiss,
+                modifier = Modifier.testTag(CoinTestTags.COIN_CHART_CLOSE),
             ) {
                 Text(
                     text = "Close",

@@ -73,6 +73,30 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.ktor.ios)
         }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.test.assertk)
+            implementation(libs.test.turbine)
+        }
+        androidInstrumentedTest {
+            dependsOn(commonTest.get())
+        }
+        androidInstrumentedTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlin.test.junit)
+            implementation(libs.test.compose.ui.junit4.android)
+            implementation(libs.test.compose.manifest)
+            implementation(libs.test.core.ktx)
+            implementation(libs.test.androidx.runner)
+            implementation(libs.test.androidx.ext.junit)
+            implementation(libs.test.androidx.rules)
+        }
+        androidUnitTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlin.test.junit)
+            implementation(libs.test.assertk)
+        }
     }
 }
 
@@ -86,6 +110,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         val apiKey = project.loadLocalProperty(
             path = "local.properties",
