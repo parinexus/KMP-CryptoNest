@@ -46,6 +46,7 @@ test-androidx-rules = { module = "androidx.test:rules", version.ref = "androidx-
 # Ktor Libraries
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
 ktor-ios = { module = "io.ktor:ktor-client-ios", version.ref = "ktor" }
@@ -94,5 +95,6 @@ composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "k
 ktor = [
     "ktor-client-content-negotiation",
     "ktor-client-core",
+    "ktor-client-logging",
     "ktor-serialization-kotlinx-json",
 ]
