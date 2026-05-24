@@ -13,11 +13,11 @@ fun CoinItemDto.toCoinInfoModel() = CoinInfoModel(
         symbol = symbol,
         iconUrl = iconUrl,
     ),
-    price = price,
-    changePercent = change,
+    price = price.toDoubleOrNull() ?: 0.0,
+    changePercent = change.toDoubleOrNull() ?: 0.0,
 )
 
 fun CoinPriceDto.toPriceModel() = PriceModel(
-    price = price ?: 0.0,
+    price = price?.toDoubleOrNull() ?: 0.0,
     timestamp = timestamp,
 )

@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import parinexus.kmp.first.coins.data.remote.dto.priceAsDouble
 import parinexus.kmp.first.coins.domain.api.CoinsRemoteDataSource
 import parinexus.kmp.first.core.domain.DataError
 import parinexus.kmp.first.core.domain.EmptyResult
@@ -53,7 +54,7 @@ class PortfolioRepositoryImpl(
                                     val coin =
                                         coinsResponseDto.data.coins.find { it.uuid == portfolioCoinEntity.coinId }
                                     coin?.let {
-                                        portfolioCoinEntity.toPortfolioCoinModel(it.price)
+                                        portfolioCoinEntity.toPortfolioCoinModel(it.priceAsDouble())
                                     }
                                 }
                             emit(Result.Success(ownedCoins))
@@ -73,7 +74,11 @@ class PortfolioRepositoryImpl(
             .onSuccess { coinDetailsResponseDto ->
                 val portfolioCoinEntity = portfolioDao.getCoinById(coinId)
                 return if (portfolioCoinEntity != null) {
-                    Result.Success(portfolioCoinEntity.toPortfolioCoinModel(coinDetailsResponseDto.data.coin.price))
+                    Result.Success(
+                        portfolioCoinEntity.toPortfolioCoinModel(
+                            coinDetailsResponseDto.data.coin.priceAsDouble(),
+                        ),
+                    )
 
                 } else {
                     Result.Success(null)
@@ -112,7 +117,8 @@ class PortfolioRepositoryImpl(
                     }.onSuccess {
                         val totalValue = portfolioCoinEntities.sumOf { portfolioCoinEntity ->
                             val coinPrice =
-                                it.data.coins.find { it.uuid == portfolioCoinEntity.coinId }?.price
+                                it.data.coins.find { coin -> coin.uuid == portfolioCoinEntity.coinId }
+                                    ?.priceAsDouble()
                                     ?: 0.0
                             portfolioCoinEntity.amountOwned * coinPrice
                         }

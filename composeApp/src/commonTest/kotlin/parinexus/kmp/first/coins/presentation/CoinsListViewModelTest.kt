@@ -4,15 +4,11 @@ import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.hasSize
 import assertk.assertions.isEqualTo
-import assertk.assertions.isFalse
-import assertk.assertions.isNotNull
 import assertk.assertions.isNull
-import assertk.assertions.isTrue
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
-import parinexus.kmp.first.coins.domain.FetchCoinDetailsUseCase
 import parinexus.kmp.first.coins.domain.FetchCoinPriceHistoryUseCase
 import parinexus.kmp.first.coins.domain.FetchCoinsListUseCase
 import parinexus.kmp.first.core.domain.DataError
@@ -37,14 +33,13 @@ class CoinsListViewModelTest : MainCoroutineRule() {
         val viewModel = createViewModel()
 
         viewModel.state.test {
-            var loaded = awaitItem()
-            while (loaded.coins.isEmpty() && loaded.error == null) {
-                loaded = awaitItem()
+            var state = awaitItem()
+            while (state.content !is CoinsListContent.Success) {
+                state = awaitItem()
             }
-            assertThat(loaded.isLoading).isFalse()
-            assertThat(loaded.coins).hasSize(2)
-            assertThat(loaded.coins.first().name).isEqualTo("Bitcoin")
-            assertThat(loaded.error).isNull()
+            val success = state.content as CoinsListContent.Success
+            assertThat(success.coins).hasSize(2)
+            assertThat(success.coins.first().name).isEqualTo("Bitcoin")
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -52,18 +47,20 @@ class CoinsListViewModelTest : MainCoroutineRule() {
     @Test
     fun loadCoins_emitsErrorStateOnFailure() = runTest {
         remote = FakeCoinsRemoteDataSource(
-            coinsResult = Result.Error(DataError.Remote.NO_INTERNET),
+            coinsResult = Result.Error(
+                error = DataError.Remote.NO_INTERNET,
+                message = "No internet",
+            ),
         )
         val viewModel = createViewModel()
 
         viewModel.state.test {
             var state = awaitItem()
-            while (state.error == null && state.isLoading) {
+            while (state.content !is CoinsListContent.Error) {
                 state = awaitItem()
             }
-            assertThat(state.isLoading).isFalse()
-            assertThat(state.coins).hasSize(0)
-            assertThat(state.error).isNotNull()
+            val error = state.content as CoinsListContent.Error
+            assertThat(error.message).isEqualTo("No internet")
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -74,13 +71,13 @@ class CoinsListViewModelTest : MainCoroutineRule() {
         val viewModel = createViewModel()
 
         viewModel.state.test {
-            var loaded = awaitItem()
-            while (loaded.coins.isEmpty() && loaded.error == null) {
-                loaded = awaitItem()
+            var state = awaitItem()
+            while (state.content !is CoinsListContent.Success) {
+                state = awaitItem()
             }
             viewModel.onCoinLongPressed(TestCoins.BITCOIN_ID)
 
-            var state = awaitItem()
+            state = awaitItem()
             while (state.chartState == null || state.chartState?.isLoading == true) {
                 state = awaitItem()
             }
@@ -99,13 +96,13 @@ class CoinsListViewModelTest : MainCoroutineRule() {
         val viewModel = createViewModel()
 
         viewModel.state.test {
-            var loaded = awaitItem()
-            while (loaded.coins.isEmpty() && loaded.error == null) {
-                loaded = awaitItem()
+            var state = awaitItem()
+            while (state.content !is CoinsListContent.Success) {
+                state = awaitItem()
             }
             viewModel.onCoinLongPressed(TestCoins.BITCOIN_ID)
 
-            var state = awaitItem()
+            state = awaitItem()
             while (state.chartState?.isLoading != false) {
                 state = awaitItem()
             }
