@@ -18,7 +18,11 @@ data class CoinItemDto(
     val symbol: String,
     val name: String,
     val iconUrl: String,
-    val price: Double,
+    /** Coinranking API returns price as a string (e.g. "76594.74"). */
+    val price: String,
     val rank: Int,
-    val change: Double,
+    /** 24h change percent as a string (e.g. "1.54"). */
+    val change: String,
 )
+
+fun CoinItemDto.priceAsDouble(): Double = price.toDoubleOrNull() ?: 0.0

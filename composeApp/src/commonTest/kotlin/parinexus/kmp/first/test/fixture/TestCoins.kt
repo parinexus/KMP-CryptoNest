@@ -33,9 +33,9 @@ object TestCoins {
         symbol = "BTC",
         name = "Bitcoin",
         iconUrl = bitcoin.iconUrl,
-        price = 50_000.0,
+        price = "50000",
         rank = 1,
-        change = 2.5,
+        change = "2.5",
     )
 
     val ethereumDto = CoinItemDto(
@@ -43,9 +43,9 @@ object TestCoins {
         symbol = "ETH",
         name = "Ethereum",
         iconUrl = ethereum.iconUrl,
-        price = 3_000.0,
+        price = "3000",
         rank = 2,
-        change = -1.2,
+        change = "-1.2",
     )
 
     val coinsResponse = CoinsResponseDto(
@@ -61,9 +61,9 @@ object TestCoins {
     val priceHistoryResponse = CoinPriceHistoryResponseDto(
         data = CoinPriceHistoryDto(
             history = listOf(
-                CoinPriceDto(price = 48_000.0, timestamp = 1L),
-                CoinPriceDto(price = 49_000.0, timestamp = 2L),
-                CoinPriceDto(price = 50_000.0, timestamp = 3L),
+                CoinPriceDto(price = "48000", timestamp = 1L),
+                CoinPriceDto(price = "49000", timestamp = 2L),
+                CoinPriceDto(price = "50000", timestamp = 3L),
             ),
         ),
     )
