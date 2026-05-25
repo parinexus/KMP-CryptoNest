@@ -1,7 +1,10 @@
 package parinexus.kmp.first.test.fixture
 
+import parinexus.kmp.first.coins.data.remote.dto.CoinAllTimeHighDto
+import parinexus.kmp.first.coins.data.remote.dto.CoinDetailDto
 import parinexus.kmp.first.coins.data.remote.dto.CoinDetailsResponseDto
 import parinexus.kmp.first.coins.data.remote.dto.CoinItemDto
+import parinexus.kmp.first.coins.data.remote.dto.CoinSupplyDto
 import parinexus.kmp.first.coins.data.remote.dto.CoinPriceDto
 import parinexus.kmp.first.coins.data.remote.dto.CoinPriceHistoryDto
 import parinexus.kmp.first.coins.data.remote.dto.CoinPriceHistoryResponseDto
@@ -54,8 +57,30 @@ object TestCoins {
         ),
     )
 
+    val bitcoinDetailDto = CoinDetailDto(
+        uuid = BITCOIN_ID,
+        symbol = "BTC",
+        name = "Bitcoin",
+        description = "Bitcoin is the first decentralized digital currency.",
+        iconUrl = bitcoin.iconUrl,
+        price = "50000",
+        rank = 1,
+        change = "2.5",
+        marketCap = "1000000000000",
+        volume24h = "50000000000",
+        sparkline = listOf("48000", "49000", "50000"),
+        supply = CoinSupplyDto(
+            circulating = "19000000",
+            max = "21000000",
+        ),
+        allTimeHigh = CoinAllTimeHighDto(price = "69000", timestamp = 1_609_459_200L),
+        numberOfMarkets = 9_800,
+        numberOfExchanges = 190,
+        tags = listOf("layer-1"),
+    )
+
     val bitcoinDetailsResponse = CoinDetailsResponseDto(
-        data = CoinResponseDto(coin = bitcoinDto),
+        data = CoinResponseDto(coin = bitcoinDetailDto),
     )
 
     val priceHistoryResponse = CoinPriceHistoryResponseDto(

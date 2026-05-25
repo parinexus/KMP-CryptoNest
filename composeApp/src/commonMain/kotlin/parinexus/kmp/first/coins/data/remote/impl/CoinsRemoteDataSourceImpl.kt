@@ -52,8 +52,19 @@ class CoinsRemoteDataSourceImpl(
     }
 
     override suspend fun getCoinById(coinId: String): Result<CoinDetailsResponseDto, DataError.Remote> {
-        return safeCall("coin/$coinId") {
-            httpClient.get("coin/$coinId")
+        return safeCall<CoinDetailsResponseDto>("coin/$coinId") {
+            httpClient.get("coin/$coinId") {
+                parameter("timePeriod", "24h")
+            }
+        }.also { result ->
+            result.onSuccess { dto ->
+                NetworkLogger.d(
+                    "coin details: id=$coinId, name=${dto.data.coin.name}, " +
+                        "sparkline=${dto.data.coin.sparkline?.size ?: 0}",
+                )
+            }.onError { error ->
+                NetworkLogger.e("coin details failed: coinId=$coinId, error=$error")
+            }
         }
     }
 }

@@ -9,5 +9,5 @@ data class CoinDetailsResponseDto(
 
 @Serializable
 data class CoinResponseDto(
-    val coin: CoinItemDto,
+    val coin: CoinDetailDto,
 )

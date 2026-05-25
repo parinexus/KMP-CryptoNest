@@ -9,12 +9,14 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import parinexus.kmp.first.coins.presentation.CoinsGridScreen
+import parinexus.kmp.first.coins.presentation.detail.CoinDetailScreen
 import parinexus.kmp.first.portfolio.presentation.PortfolioScreen
 import parinexus.kmp.first.theme.CoinTheme
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import parinexus.kmp.first.core.navigation.Buy
+import parinexus.kmp.first.core.navigation.CoinDetail
 import parinexus.kmp.first.core.navigation.Coins
 import parinexus.kmp.first.core.navigation.Portfolio
 import parinexus.kmp.first.core.navigation.Sell
@@ -41,7 +43,7 @@ fun App() {
             composable<Portfolio> {
                 PortfolioScreen(
                     onCoinItemClicked = { coinId ->
-                        navController.navigate(Sell(coinId = coinId))
+                        navController.navigate(CoinDetail(coinId = coinId))
                     },
                     onDiscoverCoinsClicked = {
                         navController.navigate(Coins)
@@ -51,8 +53,18 @@ fun App() {
 
             composable<Coins> {
                 CoinsGridScreen { coinId ->
-                    navController.navigate(Buy(coinId = coinId))
+                    navController.navigate(CoinDetail(coinId = coinId))
                 }
+            }
+
+            composable<CoinDetail> { navBackStackEntry ->
+                val coinId = navBackStackEntry.toRoute<CoinDetail>().coinId
+                CoinDetailScreen(
+                    coinId = coinId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onBuyClicked = { id -> navController.navigate(Buy(coinId = id)) },
+                    onSellClicked = { id -> navController.navigate(Sell(coinId = id)) },
+                )
             }
 
             composable<Buy> { navBackStackEntry ->

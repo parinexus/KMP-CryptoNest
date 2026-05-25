@@ -20,6 +20,9 @@ fun DataError.toUiText(): StringResource {
         DataError.Remote.NO_INTERNET -> Res.string.error_no_internet
         DataError.Remote.SERVER -> Res.string.error_unknown
         DataError.Remote.SERIALIZATION -> Res.string.error_serialization
+        DataError.Remote.COIN_NOT_FOUND -> Res.string.error_unknown
+        DataError.Remote.VALIDATION_ERROR -> Res.string.error_unknown
+        DataError.Remote.REFERENCE_UNAVAILABLE -> Res.string.error_unknown
         DataError.Remote.UNKNOWN -> Res.string.error_unknown
         DataError.Local.INSUFFICIENT_FUNDS -> Res.string.error_insufficient_balance
     }

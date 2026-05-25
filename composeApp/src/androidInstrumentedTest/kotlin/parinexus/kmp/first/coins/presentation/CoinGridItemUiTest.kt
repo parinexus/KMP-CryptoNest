@@ -49,6 +49,8 @@ class CoinGridItemUiTest {
         composeRule.onNodeWithText("$50,000.00").assertIsDisplayed()
         composeRule.onNodeWithText("+2.50%").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Bitcoin logo").assertIsDisplayed()
+        composeRule.onNodeWithTag(CoinTestTags.COINS_GRID_HOLD_HINT).assertIsDisplayed()
+        composeRule.onNodeWithText("Hold for 24h chart").assertIsDisplayed()
     }
 
     @Test
