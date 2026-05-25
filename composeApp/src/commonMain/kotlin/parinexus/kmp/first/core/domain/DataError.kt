@@ -7,7 +7,10 @@ sealed interface DataError: Error {
         NO_INTERNET,
         SERVER,
         SERIALIZATION,
-        UNKNOWN
+        COIN_NOT_FOUND,
+        VALIDATION_ERROR,
+        REFERENCE_UNAVAILABLE,
+        UNKNOWN,
     }
 
     enum class Local: DataError {

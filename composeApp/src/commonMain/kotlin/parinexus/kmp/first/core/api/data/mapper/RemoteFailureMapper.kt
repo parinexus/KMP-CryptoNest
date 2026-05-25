@@ -19,10 +19,17 @@ class CoinrankingRemoteFailureMapper(
     override fun map(httpStatus: Int, body: String): RemoteFailure {
         val apiError = errorParser.parse(body)
         val apiMessage = apiError?.message?.takeIf { it.isNotBlank() }
+        val errorCode = apiError?.errorCode
 
         val errorType = when {
-            apiError?.code == "RATE_LIMIT_EXCEEDED" || httpStatus == 429 ->
+            errorCode == "RATE_LIMIT_EXCEEDED" || httpStatus == 429 ->
                 DataError.Remote.TOO_MANY_REQUESTS
+            errorCode == "COIN_NOT_FOUND" || httpStatus == 404 ->
+                DataError.Remote.COIN_NOT_FOUND
+            errorCode == "REFERENCE_UNAVAILABLE" ->
+                DataError.Remote.REFERENCE_UNAVAILABLE
+            errorCode == "VALIDATION_ERROR" || httpStatus == 422 ->
+                DataError.Remote.VALIDATION_ERROR
             httpStatus == 408 -> DataError.Remote.REQUEST_TIMEOUT
             httpStatus in 500..599 -> DataError.Remote.SERVER
             httpStatus == 401 || httpStatus == 403 -> DataError.Remote.UNKNOWN
@@ -33,7 +40,7 @@ class CoinrankingRemoteFailureMapper(
         return RemoteFailure(
             error = errorType,
             apiMessage = apiMessage,
-            apiCode = apiError?.code,
+            apiCode = errorCode,
             httpStatus = httpStatus,
         )
     }
