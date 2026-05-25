@@ -6,6 +6,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -39,7 +41,17 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kmp_cryptonest.composeapp.generated.resources.Res
+import kmp_cryptonest.composeapp.generated.resources.coins_grid_chart_badge
+import kmp_cryptonest.composeapp.generated.resources.coins_grid_hold_for_chart
+import kmp_cryptonest.composeapp.generated.resources.coins_list_interaction_hint
+import org.jetbrains.compose.resources.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -120,6 +132,9 @@ fun CoinsGridScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    CoinsListInteractionHint()
+                }
                 items(coins, key = { it.id }) { coin ->
                     CoinGridItem(
                         coin = coin,
@@ -132,6 +147,26 @@ fun CoinsGridScreen(
     }
 }
 
+@Composable
+fun CoinsListInteractionHint() {
+    val hint = stringResource(Res.string.coins_list_interaction_hint)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(CoinTestTags.COINS_LIST_INTERACTION_HINT),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f),
+    ) {
+        Text(
+            text = hint,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CoinGridItem(
@@ -139,10 +174,23 @@ fun CoinGridItem(
     onCoinClicked: (String) -> Unit,
     onCoinLongPressed: (String) -> Unit,
 ) {
+    val holdHint = stringResource(Res.string.coins_grid_hold_for_chart)
+    val chartBadge = stringResource(Res.string.coins_grid_chart_badge)
+    val itemDescription = "${coin.name}. Tap for details. $holdHint."
+
     Surface(
         modifier = Modifier
             .testTag(CoinTestTags.coinGridItem(coin.id))
             .fillMaxWidth()
+            .semantics {
+                contentDescription = itemDescription
+                customActions = listOf(
+                    CustomAccessibilityAction(holdHint) {
+                        onCoinLongPressed(coin.id)
+                        true
+                    },
+                )
+            }
             .combinedClickable(
                 onLongClick = { onCoinLongPressed(coin.id) },
                 onClick = { onCoinClicked(coin.id) },
@@ -152,10 +200,27 @@ fun CoinGridItem(
         shadowElevation = 6.dp,
         color = MaterialTheme.colorScheme.surface,
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(10.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+            ) {
+                Text(
+                    text = chartBadge,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
             AsyncImage(
                 model = coin.iconUrl,
                 contentDescription = "${coin.name} logo",
@@ -210,6 +275,32 @@ fun CoinGridItem(
                         LocalCoinColorsPalette.current.lossRed
                     },
                 )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .testTag(CoinTestTags.COINS_GRID_HOLD_HINT),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = "📈",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = holdHint,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
             }
         }
     }

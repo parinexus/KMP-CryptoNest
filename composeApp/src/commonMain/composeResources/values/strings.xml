@@ -7,4 +7,8 @@
     <string name="error_too_many_requests">Too many requests. Please wait a moment and try again.</string>
     <string name="error_serialization">We couldn’t process the data. Please try again.</string>
     <string name="error_insufficient_balance">You don’t have enough balance to complete this action.</string>
+    <string name="coins_list_interaction_hint">Tap a coin for details · Hold for 24h chart</string>
+    <string name="coins_grid_hold_for_chart">Hold for 24h chart</string>
+    <string name="coins_grid_chart_badge">24h</string>
+    <string name="coin_detail_chart_empty">24h chart could not be loaded.</string>
 </resources>

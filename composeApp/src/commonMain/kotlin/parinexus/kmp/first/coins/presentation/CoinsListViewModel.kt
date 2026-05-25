@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import parinexus.kmp.first.coins.domain.FetchCoinPriceHistoryUseCase
 import parinexus.kmp.first.coins.domain.FetchCoinsListUseCase
+import parinexus.kmp.first.core.api.presentation.RemoteErrorContext
 import parinexus.kmp.first.core.api.presentation.RemoteErrorUiMapper
 import parinexus.kmp.first.core.domain.Result
 import parinexus.kmp.first.core.network.NetworkLogger
@@ -23,7 +24,15 @@ class CoinsListViewModel(
 
     private val _state = MutableStateFlow(CoinsState())
     val state = _state
-        .onStart { loadCoins() }
+        .onStart {
+            when (_state.value.content) {
+                is CoinsListContent.Loading -> loadCoins()
+                is CoinsListContent.Error -> Unit
+                is CoinsListContent.Success,
+                is CoinsListContent.Empty,
+                -> Unit
+            }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -67,7 +76,10 @@ class CoinsListViewModel(
                 _state.update {
                     it.copy(
                         content = CoinsListContent.Error(
-                            message = RemoteErrorUiMapper.toDisplayMessage(response),
+                            message = RemoteErrorUiMapper.toDisplayMessage(
+                                response,
+                                RemoteErrorContext.CoinsList,
+                            ),
                         ),
                     )
                 }
@@ -126,7 +138,10 @@ class CoinsListViewModel(
                                 sparkLine = emptyList(),
                                 isLoading = false,
                                 coinName = coinName,
-                                errorMessage = RemoteErrorUiMapper.toDisplayMessage(priceHistory),
+                                errorMessage = RemoteErrorUiMapper.toDisplayMessage(
+                                    priceHistory,
+                                    RemoteErrorContext.CoinPriceChartDialog,
+                                ),
                             ),
                         )
                     }
