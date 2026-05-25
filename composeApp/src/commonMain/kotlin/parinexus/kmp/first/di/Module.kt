@@ -15,6 +15,7 @@ import parinexus.kmp.first.coins.domain.FetchCoinPriceHistoryUseCase
 import parinexus.kmp.first.coins.domain.FetchCoinsListUseCase
 import parinexus.kmp.first.coins.domain.api.CoinsRemoteDataSource
 import parinexus.kmp.first.coins.presentation.CoinsListViewModel
+import parinexus.kmp.first.coins.presentation.detail.CoinDetailViewModel
 import parinexus.kmp.first.core.database.portfolio.PortfolioDatabase
 import parinexus.kmp.first.core.database.portfolio.getPortfolioDatabase
 import parinexus.kmp.first.core.network.HttpClientFactory
@@ -52,8 +53,9 @@ val sharedModule = module {
     single { get<PortfolioDatabase>().userBalanceDao() }
     viewModel { PortfolioViewModel(get()) }
 
-    //coins list
+    // coins
     viewModel { CoinsListViewModel(get(), get()) }
+    viewModel { (coinId: String) -> CoinDetailViewModel(get(), get(), coinId) }
     singleOf(::FetchCoinsListUseCase)
     singleOf(::FetchCoinDetailsUseCase)
     singleOf(::FetchCoinPriceHistoryUseCase)
