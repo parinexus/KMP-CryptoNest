@@ -23,6 +23,8 @@ class FetchCoinDetailsUseCaseTest {
         val coin = (result as Result.Success).data
         assertThat(coin.coin.name).isEqualTo("Bitcoin")
         assertThat(coin.price).isEqualTo(50_000.0)
+        assertThat(coin.rank).isEqualTo(1)
+        assertThat(coin.sparkline).isEqualTo(listOf(48_000.0, 49_000.0, 50_000.0))
     }
 
     @Test
