@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import parinexus.kmp.first.coins.data.remote.dto.priceAsDouble
 import parinexus.kmp.first.coins.domain.api.CoinsRemoteDataSource
+import parinexus.kmp.first.coins.domain.repository.CoinsRepository
 import parinexus.kmp.first.core.domain.DataError
 import parinexus.kmp.first.core.domain.EmptyResult
 import parinexus.kmp.first.core.domain.Result
@@ -27,7 +28,8 @@ import kotlin.collections.emptyList
 class PortfolioRepositoryImpl(
     val portfolioDao: PortfolioDao,
     val userBalanceDao: UserBalanceDao,
-    val coinsRemoteDataSource: CoinsRemoteDataSource
+    val coinsRemoteDataSource: CoinsRemoteDataSource,
+    private val coinsRepository: CoinsRepository,
 ) : PortfolioRepository {
     override suspend fun initUserBalance() {
         val currentBalance = userBalanceDao.getCashBalance()
@@ -44,21 +46,27 @@ class PortfolioRepositoryImpl(
                 }
             } else {
                 flow {
-                    coinsRemoteDataSource.getListOfCoins()
-                        .onError { error ->
-                            emit(Result.Error(error))
-                        }
-                        .onSuccess { coinsResponseDto ->
-                            val ownedCoins =
-                                portfolioCoinEntities.mapNotNull { portfolioCoinEntity ->
-                                    val coin =
-                                        coinsResponseDto.data.coins.find { it.uuid == portfolioCoinEntity.coinId }
-                                    coin?.let {
-                                        portfolioCoinEntity.toPortfolioCoinModel(it.priceAsDouble())
-                                    }
-                                }
+                    when (val remoteResult = coinsRemoteDataSource.getListOfCoins()) {
+                        is Result.Success -> {
+                            val ownedCoins = mapOwnedCoins(
+                                portfolioCoinEntities,
+                                remoteResult.data.data.coins.associateBy { it.uuid },
+                            ) { dto -> dto.priceAsDouble() }
                             emit(Result.Success(ownedCoins))
                         }
+                        is Result.Error -> {
+                            val cached = coinsRepository.getCachedCoinsListOrNull()
+                            if (cached != null) {
+                                val ownedCoins = mapOwnedCoins(
+                                    portfolioCoinEntities,
+                                    cached.associateBy { it.coin.id },
+                                ) { info -> info.price }
+                                emit(Result.Success(ownedCoins))
+                            } else {
+                                emit(Result.Error(remoteResult.error))
+                            }
+                        }
+                    }
                 }
             }
         }.catch {
@@ -156,5 +164,15 @@ class PortfolioRepositoryImpl(
 
     override suspend fun updateCashBalance(newBalance: Double) {
         userBalanceDao.updateCashBalance(newBalance)
+    }
+
+    private fun <T> mapOwnedCoins(
+        portfolioCoinEntities: List<parinexus.kmp.first.portfolio.data.local.PortfolioCoinEntity>,
+        pricesByCoinId: Map<String, T>,
+        priceSelector: (T) -> Double,
+    ): List<PortfolioCoinModel> = portfolioCoinEntities.mapNotNull { entity ->
+        pricesByCoinId[entity.coinId]?.let { priceSource ->
+            entity.toPortfolioCoinModel(priceSelector(priceSource))
+        }
     }
 }

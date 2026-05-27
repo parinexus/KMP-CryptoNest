@@ -14,8 +14,8 @@ import io.ktor.http.contentType
 import io.ktor.http.headers
 import io.ktor.http.takeFrom
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.json.Json
 import parinexus.kmp.first.AppSecrets
+import parinexus.kmp.first.core.serialization.AppJson
 
 object HttpClientFactory {
     fun create(engine: HttpClientEngine): HttpClient {
@@ -41,12 +41,7 @@ object HttpClientFactory {
                 requestTimeoutMillis = 60_000L
             }
             install(ContentNegotiation) {
-                json(
-                    json = Json {
-                        ignoreUnknownKeys = true
-                        isLenient = true
-                    },
-                )
+                json(json = AppJson.instance)
             }
             install(Logging) {
                 logger = object : Logger {

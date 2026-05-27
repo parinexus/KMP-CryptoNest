@@ -1,19 +1,19 @@
 package parinexus.kmp.first.coins.domain
 
-import parinexus.kmp.first.coins.data.mapper.toCoinDetailModel
-import parinexus.kmp.first.coins.domain.api.CoinsRemoteDataSource
+import kotlinx.coroutines.flow.Flow
 import parinexus.kmp.first.coins.domain.model.CoinDetailModel
+import parinexus.kmp.first.coins.domain.repository.CoinsRepository
 import parinexus.kmp.first.core.domain.DataError
 import parinexus.kmp.first.core.domain.Result
-import parinexus.kmp.first.core.domain.map
+import parinexus.kmp.first.core.domain.cache.CachedData
 
 class FetchCoinDetailsUseCase(
-    private val client: CoinsRemoteDataSource,
+    private val repository: CoinsRepository,
 ) {
 
-    suspend fun execute(coinId: String): Result<CoinDetailModel, DataError.Remote> {
-        return client.getCoinById(coinId).map { dto ->
-            dto.data.coin.toCoinDetailModel()
-        }
-    }
+    operator fun invoke(
+        coinId: String,
+        forceRefresh: Boolean = false,
+    ): Flow<Result<CachedData<CoinDetailModel>, DataError.Remote>> =
+        repository.observeCoinDetail(coinId, forceRefresh)
 }

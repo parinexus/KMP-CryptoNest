@@ -6,6 +6,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -69,17 +70,18 @@ class SellViewModel(
     }
 
     private suspend fun getCoinDetails(ownedAmountInUnit: Double) {
-        when (val coinResponse = getCoinDetailsUseCase.execute(coinId)) {
+        when (val coinResponse = getCoinDetailsUseCase(coinId, forceRefresh = true).first()) {
             is Result.Success -> {
-                val availableAmountInFiat = ownedAmountInUnit * coinResponse.data.price
+                val coin = coinResponse.data.value
+                val availableAmountInFiat = ownedAmountInUnit * coin.price
                 _state.update {
                     it.copy(
                         coin = UiTradeCoinItem(
-                            id = coinResponse.data.coin.id,
-                            name = coinResponse.data.coin.name,
-                            symbol = coinResponse.data.coin.symbol,
-                            iconUrl = coinResponse.data.coin.iconUrl,
-                            price = coinResponse.data.price,
+                            id = coin.coin.id,
+                            name = coin.coin.name,
+                            symbol = coin.coin.symbol,
+                            iconUrl = coin.coin.iconUrl,
+                            price = coin.price,
                         ),
                         availableAmount = "Available: ${formatFiat(availableAmountInFiat)}"
                     )
