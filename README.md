@@ -33,6 +33,7 @@ A single shared codebase powers **Android** and **iOS**, demonstrating productio
 | **24h chart** | Long-press a coin to load price history in a dialog |
 | **Resilient UI** | Loading, empty, and error states with retry on the coins list |
 | **API errors** | Normalised remote failures (timeouts, rate limits, API messages) |
+| **Offline-first market data** | Room-backed cache with TTL, pull-to-refresh, and freshness banners |
 
 ---
 
@@ -86,6 +87,17 @@ flowchart TB
 ### Dependency rule
 
 Dependencies point **inward**: `presentation → domain ← data`. Platform code (`androidMain`, `iosMain`) only provides `expect/actual` boundaries (secrets, database factory, system UI).
+
+### Offline-first market cache (single source of truth)
+
+Market reads go through **`CoinsRepository`** — the only entry point for coin list, coin detail, and 24h price history. Remote calls update Room; the UI observes `Flow`/`Result` wrapped in `CachedData` with `DataFreshness` (`Fresh`, `Cached`, `Stale`, `Offline`).
+
+| Data | TTL (`MarketCachePolicy`) | Storage |
+|------|---------------------------|---------|
+| Coin list & detail | 5 minutes | `CachedCoinEntity`, `CachedCoinDetailEntity` |
+| Price history (charts) | 15 minutes | `CachedPriceHistoryEntity` |
+
+On network failure, the repository serves the last persisted snapshot when available. Portfolio valuation can fall back to the cached coin list for holding prices. Pull-to-refresh on the coins grid and coin detail triggers `forceRefresh`.
 
 ---
 
