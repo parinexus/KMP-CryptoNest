@@ -15,6 +15,7 @@ import parinexus.kmp.first.core.api.presentation.RemoteErrorUiMapper
 import parinexus.kmp.first.core.domain.DataError
 import parinexus.kmp.first.core.domain.Result
 import parinexus.kmp.first.test.fake.FakeCoinsRemoteDataSource
+import parinexus.kmp.first.test.fake.FakeCoinsRepository
 import parinexus.kmp.first.test.fixture.TestCoins
 import parinexus.kmp.first.test.rule.MainCoroutineRule
 
@@ -124,9 +125,10 @@ class CoinDetailViewModelTest : MainCoroutineRule() {
     }
 
     private fun createViewModel(coinId: String): CoinDetailViewModel {
+        val repository = FakeCoinsRepository(remote)
         return CoinDetailViewModel(
-            fetchCoinDetailsUseCase = FetchCoinDetailsUseCase(remote),
-            fetchCoinPriceHistoryUseCase = FetchCoinPriceHistoryUseCase(remote),
+            fetchCoinDetailsUseCase = FetchCoinDetailsUseCase(repository),
+            fetchCoinPriceHistoryUseCase = FetchCoinPriceHistoryUseCase(repository),
             coinId = coinId,
         )
     }
