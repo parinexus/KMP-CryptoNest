@@ -13,6 +13,7 @@ fun getPortfolioDatabase(
     builder: RoomDatabase.Builder<PortfolioDatabase>
 ): PortfolioDatabase {
     return builder
+        .addMigrations(MIGRATION_3_4)
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
         .build()
