@@ -2,6 +2,7 @@ package parinexus.kmp.first.coins.presentation.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.onStart
@@ -13,7 +14,11 @@ import parinexus.kmp.first.coins.domain.FetchCoinPriceHistoryUseCase
 import parinexus.kmp.first.core.api.presentation.RemoteErrorContext
 import parinexus.kmp.first.core.api.presentation.RemoteErrorUiMapper
 import parinexus.kmp.first.core.domain.Result
+import parinexus.kmp.first.core.domain.cache.CachedData
 import parinexus.kmp.first.core.network.NetworkLogger
+import kmp_cryptonest.composeapp.generated.resources.Res
+import kmp_cryptonest.composeapp.generated.resources.market_cache_refresh_failed
+import parinexus.kmp.first.core.presentation.cache.DataFreshnessUiMapper
 
 class CoinDetailViewModel(
     private val fetchCoinDetailsUseCase: FetchCoinDetailsUseCase,
@@ -22,8 +27,10 @@ class CoinDetailViewModel(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CoinDetailState())
+    private var loadJob: Job? = null
+
     val state = _state
-        .onStart { loadDetails() }
+        .onStart { loadDetails(forceRefresh = false) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -31,53 +38,78 @@ class CoinDetailViewModel(
         )
 
     fun onRetry() {
-        viewModelScope.launch { loadDetails() }
+        loadDetails(forceRefresh = true)
+    }
+
+    fun onRefresh() {
+        loadDetails(forceRefresh = true)
     }
 
     fun onRetryChart() {
-        viewModelScope.launch { loadChart() }
+        viewModelScope.launch { loadChart(forceRefresh = true) }
     }
 
-    private suspend fun loadDetails() {
-        _state.update {
-            it.copy(
-                content = CoinDetailContent.Loading,
-                chartState = CoinDetailChartState.Loading,
-            )
-        }
+    private fun loadDetails(forceRefresh: Boolean) {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            val hasContent = _state.value.content is CoinDetailContent.Success
 
-        when (val result = fetchCoinDetailsUseCase.execute(coinId)) {
-            is Result.Success -> {
-                NetworkLogger.d("CoinDetailViewModel: loaded ${result.data.coin.name}")
+            if (forceRefresh && hasContent) {
+                _state.update { it.copy(isRefreshing = true) }
+            } else if (!hasContent) {
                 _state.update {
                     it.copy(
-                        content = CoinDetailContent.Success(
-                            detail = CoinDetailUiMapper.toUiModel(result.data),
-                        ),
+                        content = CoinDetailContent.Loading,
                         chartState = CoinDetailChartState.Loading,
+                        cacheBanner = null,
                     )
                 }
-                loadChart()
             }
-            is Result.Error -> {
-                NetworkLogger.e(
-                    "CoinDetailViewModel: load failed — ${result.error}, message=${result.message}",
-                )
-                _state.update {
-                    it.copy(
-                        content = CoinDetailContent.Error(
-                            message = RemoteErrorUiMapper.toDisplayMessage(
-                                result,
-                                RemoteErrorContext.CoinDetail,
-                            ),
-                        ),
-                    )
+
+            fetchCoinDetailsUseCase(coinId, forceRefresh).collect { result ->
+                when (result) {
+                    is Result.Success -> {
+                        NetworkLogger.d("CoinDetailViewModel: loaded ${result.data.value.coin.name}")
+                        _state.update {
+                            it.copy(
+                                content = CoinDetailContent.Success(
+                                    detail = CoinDetailUiMapper.toUiModel(result.data.value),
+                                ),
+                                cacheBanner = DataFreshnessUiMapper.bannerMessage(result.data.freshness),
+                                isRefreshing = false,
+                                chartState = CoinDetailChartState.Loading,
+                            )
+                        }
+                        loadChart(forceRefresh = forceRefresh)
+                    }
+                    is Result.Error -> {
+                        if (_state.value.content !is CoinDetailContent.Success) {
+                            _state.update {
+                                it.copy(
+                                    content = CoinDetailContent.Error(
+                                        message = RemoteErrorUiMapper.toDisplayMessage(
+                                            result,
+                                            RemoteErrorContext.CoinDetail,
+                                        ),
+                                    ),
+                                    isRefreshing = false,
+                                )
+                            }
+                        } else {
+                            _state.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    cacheBanner = Res.string.market_cache_refresh_failed,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-    private suspend fun loadChart() {
+    private suspend fun loadChart(forceRefresh: Boolean) {
         if (_state.value.content !is CoinDetailContent.Success) return
 
         _state.update {
@@ -88,9 +120,9 @@ class CoinDetailViewModel(
             }
         }
 
-        when (val result = fetchCoinPriceHistoryUseCase.execute(coinId)) {
+        when (val result = fetchCoinPriceHistoryUseCase.execute(coinId, forceRefresh)) {
             is Result.Success -> {
-                val sparkline = result.data
+                val sparkline = result.data.value
                     .sortedBy { it.timestamp }
                     .map { it.price }
                     .filter { it > 0.0 }

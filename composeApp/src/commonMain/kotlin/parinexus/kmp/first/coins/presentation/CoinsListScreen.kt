@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -58,6 +59,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
 import parinexus.kmp.first.coins.presentation.component.PerformanceChart
 import parinexus.kmp.first.core.presentation.component.ApiContentStateLayout
+import parinexus.kmp.first.core.presentation.component.MarketCacheBanner
 import parinexus.kmp.first.core.testing.CoinTestTags
 import parinexus.kmp.first.theme.LocalCoinColorsPalette
 
@@ -96,6 +98,13 @@ fun CoinsGridScreen(
             windowInsets = TopAppBarDefaults.windowInsets,
         )
 
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = { coinViewModel.onRefresh() },
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+        ) {
         ApiContentStateLayout(
             isLoading = state.content is CoinsListContent.Loading,
             errorMessage = (state.content as? CoinsListContent.Error)?.message,
@@ -103,8 +112,7 @@ fun CoinsGridScreen(
             emptyMessage = "No coins available right now.",
             onRetry = { coinViewModel.onRetryLoadCoins() },
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
+                .fillMaxSize()
                 .then(
                     when (state.content) {
                         is CoinsListContent.Loading -> Modifier.testTag(CoinTestTags.COINS_LOADING)
@@ -135,6 +143,14 @@ fun CoinsGridScreen(
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     CoinsListInteractionHint()
                 }
+                state.cacheBanner?.let { banner ->
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        MarketCacheBanner(
+                            message = banner,
+                            modifier = Modifier.testTag(CoinTestTags.COINS_CACHE_BANNER),
+                        )
+                    }
+                }
                 items(coins, key = { it.id }) { coin ->
                     CoinGridItem(
                         coin = coin,
@@ -143,6 +159,7 @@ fun CoinsGridScreen(
                     )
                 }
             }
+        }
         }
     }
 }
