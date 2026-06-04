@@ -12,6 +12,7 @@ import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 import parinexus.kmp.first.coins.domain.FetchCoinDetailsUseCase
 import parinexus.kmp.first.test.fake.FakeCoinsRemoteDataSource
+import parinexus.kmp.first.test.fake.FakeCoinsRepository
 import parinexus.kmp.first.test.fake.FakePortfolioRepository
 import parinexus.kmp.first.test.fixture.TestCoins
 import parinexus.kmp.first.test.rule.MainCoroutineRule
@@ -84,9 +85,10 @@ class BuyViewModelTest : MainCoroutineRule() {
 
     private fun createViewModel(cashBalance: Double): BuyViewModel {
         val remote = FakeCoinsRemoteDataSource()
+        val coinsRepository = FakeCoinsRepository(remote)
         val repository = FakePortfolioRepository(cashBalance = cashBalance)
         return BuyViewModel(
-            getCoinDetailsUseCase = FetchCoinDetailsUseCase(remote),
+            getCoinDetailsUseCase = FetchCoinDetailsUseCase(coinsRepository),
             portfolioRepository = repository,
             buyCoinUseCase = BuyCoinUseCase(repository),
             coinId = TestCoins.BITCOIN_ID,

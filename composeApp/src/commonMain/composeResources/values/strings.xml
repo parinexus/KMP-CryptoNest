@@ -11,4 +11,8 @@
     <string name="coins_grid_hold_for_chart">Hold for 24h chart</string>
     <string name="coins_grid_chart_badge">24h</string>
     <string name="coin_detail_chart_empty">24h chart could not be loaded.</string>
+    <string name="market_cache_cached">Showing saved market data.</string>
+    <string name="market_cache_stale">Prices may be outdated. Pull down to refresh.</string>
+    <string name="market_cache_offline">Offline — showing last saved data.</string>
+    <string name="market_cache_refresh_failed">Could not refresh. Showing saved data.</string>
 </resources>

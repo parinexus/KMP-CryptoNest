@@ -2,6 +2,7 @@ package parinexus.kmp.first.coins.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.onStart
@@ -13,7 +14,11 @@ import parinexus.kmp.first.coins.domain.FetchCoinsListUseCase
 import parinexus.kmp.first.core.api.presentation.RemoteErrorContext
 import parinexus.kmp.first.core.api.presentation.RemoteErrorUiMapper
 import parinexus.kmp.first.core.domain.Result
+import parinexus.kmp.first.core.domain.cache.CachedData
 import parinexus.kmp.first.core.network.NetworkLogger
+import kmp_cryptonest.composeapp.generated.resources.Res
+import kmp_cryptonest.composeapp.generated.resources.market_cache_refresh_failed
+import parinexus.kmp.first.core.presentation.cache.DataFreshnessUiMapper
 import parinexus.kmp.first.core.util.formatFiat
 import parinexus.kmp.first.core.util.formatPercentage
 
@@ -23,14 +28,12 @@ class CoinsListViewModel(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CoinsState())
+    private var loadJob: Job? = null
+
     val state = _state
         .onStart {
-            when (_state.value.content) {
-                is CoinsListContent.Loading -> loadCoins()
-                is CoinsListContent.Error -> Unit
-                is CoinsListContent.Success,
-                is CoinsListContent.Empty,
-                -> Unit
+            if (_state.value.content is CoinsListContent.Loading) {
+                loadCoins(forceRefresh = false)
             }
         }
         .stateIn(
@@ -40,50 +43,80 @@ class CoinsListViewModel(
         )
 
     fun onRetryLoadCoins() {
-        viewModelScope.launch { loadCoins() }
+        loadCoins(forceRefresh = true)
     }
 
-    private suspend fun loadCoins() {
-        _state.update { it.copy(content = CoinsListContent.Loading) }
+    fun onRefresh() {
+        loadCoins(forceRefresh = true)
+    }
 
-        when (val response = fetchCoinsListUseCase.execute()) {
-            is Result.Success -> {
-                val uiCoins = response.data.map { coin ->
-                    CoinUiModel(
-                        id = coin.coin.id,
-                        name = coin.coin.name,
-                        iconUrl = coin.coin.iconUrl,
-                        symbol = coin.coin.symbol,
-                        formattedPrice = formatFiat(coin.price),
-                        formattedChange = formatPercentage(coin.changePercent),
-                        isPositive = coin.changePercent >= 0,
-                    )
-                }
-                NetworkLogger.d("CoinsListViewModel: loaded ${uiCoins.size} coins")
-                _state.update {
-                    it.copy(
-                        content = when {
-                            uiCoins.isEmpty() -> CoinsListContent.Empty
-                            else -> CoinsListContent.Success(coins = uiCoins)
-                        },
-                    )
+    private fun loadCoins(forceRefresh: Boolean) {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            val hasContent = _state.value.content is CoinsListContent.Success ||
+                _state.value.content is CoinsListContent.Empty
+
+            if (forceRefresh && hasContent) {
+                _state.update { it.copy(isRefreshing = true) }
+            } else if (!hasContent) {
+                _state.update { it.copy(content = CoinsListContent.Loading, cacheBanner = null) }
+            }
+
+            fetchCoinsListUseCase(forceRefresh).collect { response ->
+                when (response) {
+                    is Result.Success -> applyCoinsList(response.data)
+                    is Result.Error -> {
+                        NetworkLogger.e(
+                            "CoinsListViewModel: load failed — ${response.error}, message=${response.message}",
+                        )
+                        if (_state.value.content !is CoinsListContent.Success) {
+                            _state.update {
+                                it.copy(
+                                    content = CoinsListContent.Error(
+                                        message = RemoteErrorUiMapper.toDisplayMessage(
+                                            response,
+                                            RemoteErrorContext.CoinsList,
+                                        ),
+                                    ),
+                                    isRefreshing = false,
+                                )
+                            }
+                        } else {
+                            _state.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    cacheBanner = Res.string.market_cache_refresh_failed,
+                                )
+                            }
+                        }
+                    }
                 }
             }
-            is Result.Error -> {
-                NetworkLogger.e(
-                    "CoinsListViewModel: load failed — ${response.error}, message=${response.message}",
-                )
-                _state.update {
-                    it.copy(
-                        content = CoinsListContent.Error(
-                            message = RemoteErrorUiMapper.toDisplayMessage(
-                                response,
-                                RemoteErrorContext.CoinsList,
-                            ),
-                        ),
-                    )
-                }
-            }
+        }
+    }
+
+    private fun applyCoinsList(cached: CachedData<List<parinexus.kmp.first.coins.domain.model.CoinInfoModel>>) {
+        val uiCoins = cached.value.map { coin ->
+            CoinUiModel(
+                id = coin.coin.id,
+                name = coin.coin.name,
+                iconUrl = coin.coin.iconUrl,
+                symbol = coin.coin.symbol,
+                formattedPrice = formatFiat(coin.price),
+                formattedChange = formatPercentage(coin.changePercent),
+                isPositive = coin.changePercent >= 0,
+            )
+        }
+        NetworkLogger.d("CoinsListViewModel: showing ${uiCoins.size} coins (${cached.freshness})")
+        _state.update {
+            it.copy(
+                content = when {
+                    uiCoins.isEmpty() -> CoinsListContent.Empty
+                    else -> CoinsListContent.Success(coins = uiCoins)
+                },
+                cacheBanner = DataFreshnessUiMapper.bannerMessage(cached.freshness),
+                isRefreshing = false,
+            )
         }
     }
 
@@ -107,7 +140,7 @@ class CoinsListViewModel(
         viewModelScope.launch {
             when (val priceHistory = fetchCoinPriceHistoryUseCase.execute(coinId)) {
                 is Result.Success -> {
-                    val sparkLine = priceHistory.data
+                    val sparkLine = priceHistory.data.value
                         .sortedBy { it.timestamp }
                         .map { it.price }
                         .filter { it > 0.0 }

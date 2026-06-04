@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -51,6 +52,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import parinexus.kmp.first.coins.presentation.component.PerformanceChart
 import parinexus.kmp.first.core.presentation.component.ApiContentStateLayout
+import parinexus.kmp.first.core.presentation.component.MarketCacheBanner
 import parinexus.kmp.first.core.testing.CoinTestTags
 import parinexus.kmp.first.theme.LocalCoinColorsPalette
 
@@ -123,14 +125,20 @@ fun CoinDetailScreen(
                 ) {}
             }
             is CoinDetailContent.Success -> {
-                CoinDetailBody(
-                    detail = content.detail,
-                    chartState = state.chartState,
+                PullToRefreshBox(
+                    isRefreshing = state.isRefreshing,
+                    onRefresh = { viewModel.onRefresh() },
                     modifier = contentModifier.testTag(CoinTestTags.COIN_DETAIL_SUCCESS),
-                    onBuyClicked = { onBuyClicked(content.detail.coinId) },
-                    onSellClicked = { onSellClicked(content.detail.coinId) },
-                    onRetryChart = viewModel::onRetryChart,
-                )
+                ) {
+                    CoinDetailBody(
+                        detail = content.detail,
+                        chartState = state.chartState,
+                        cacheBanner = state.cacheBanner,
+                        onBuyClicked = { onBuyClicked(content.detail.coinId) },
+                        onSellClicked = { onSellClicked(content.detail.coinId) },
+                        onRetryChart = viewModel::onRetryChart,
+                    )
+                }
             }
         }
     }
@@ -141,7 +149,7 @@ fun CoinDetailScreen(
 private fun CoinDetailBody(
     detail: CoinDetailUiModel,
     chartState: CoinDetailChartState,
-    modifier: Modifier = Modifier,
+    cacheBanner: org.jetbrains.compose.resources.StringResource?,
     onBuyClicked: () -> Unit,
     onSellClicked: () -> Unit,
     onRetryChart: () -> Unit,
@@ -150,11 +158,22 @@ private fun CoinDetailBody(
     val palette = LocalCoinColorsPalette.current
 
     Column(
-        modifier = modifier
+        modifier = Modifier
+            .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(horizontal = 16.dp),
     ) {
         Spacer(modifier = Modifier.height(16.dp))
+
+        cacheBanner?.let { banner ->
+            MarketCacheBanner(
+                message = banner,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(CoinTestTags.COIN_DETAIL_CACHE_BANNER),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
         Row(
             verticalAlignment = Alignment.CenterVertically,

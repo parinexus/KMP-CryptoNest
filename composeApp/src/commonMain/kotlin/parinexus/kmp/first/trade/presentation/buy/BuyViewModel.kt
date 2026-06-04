@@ -52,16 +52,17 @@ class BuyViewModel(
     val events = _events.receiveAsFlow()
 
     private suspend fun getCoinDetails(balance: Double) {
-        when (val coinResponse = getCoinDetailsUseCase.execute(coinId)) {
+        when (val coinResponse = getCoinDetailsUseCase(coinId, forceRefresh = true).first()) {
             is Result.Success -> {
+                val coin = coinResponse.data.value
                 _state.update {
                     it.copy(
                         coin = UiTradeCoinItem(
-                            id = coinResponse.data.coin.id,
-                            name = coinResponse.data.coin.name,
-                            symbol = coinResponse.data.coin.symbol,
-                            iconUrl = coinResponse.data.coin.iconUrl,
-                            price = coinResponse.data.price,
+                            id = coin.coin.id,
+                            name = coin.coin.name,
+                            symbol = coin.coin.symbol,
+                            iconUrl = coin.coin.iconUrl,
+                            price = coin.price,
                         ),
                         availableAmount = "Available: ${formatFiat(balance)}"
                     )
