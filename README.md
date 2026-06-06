@@ -30,6 +30,7 @@ A single shared codebase powers **Android** and **iOS**, demonstrating productio
 | **Portfolio** | View holdings, total value, and navigate to buy/sell flows |
 | **Market browse** | Coin grid with live prices from [Coinranking API](https://coinranking.com/) |
 | **Trade** | Simulated buy/sell against a local cash balance (Room) |
+| **Trade history** | Persistent ledger of every buy/sell with amounts, price, and timestamp |
 | **24h chart** | Long-press a coin to load price history in a dialog |
 | **Resilient UI** | Loading, empty, and error states with retry on the coins list |
 | **API errors** | Normalised remote failures (timeouts, rate limits, API messages) |
@@ -96,6 +97,7 @@ Market reads go through **`CoinsRepository`** — the only entry point for coin 
 |------|---------------------------|---------|
 | Coin list & detail | 5 minutes | `CachedCoinEntity`, `CachedCoinDetailEntity` |
 | Price history (charts) | 15 minutes | `CachedPriceHistoryEntity` |
+| Trade records | Permanent (local ledger) | `TradeRecordEntity` |
 
 On network failure, the repository serves the last persisted snapshot when available. Portfolio valuation can fall back to the cached coin list for holding prices. Pull-to-refresh on the coins grid and coin detail triggers `forceRefresh`.
 
@@ -130,7 +132,7 @@ KMP-CryptoNest/
 │   │       ├── core/              # api, network, database, navigation, presentation
 │   │       ├── coins/             # Feature: market list + chart
 │   │       ├── portfolio/         # Feature: holdings
-│   │       ├── trade/             # Feature: buy / sell
+│   │       ├── trade/             # Feature: buy / sell + trade history ledger + trade history ledger
 │   │       ├── theme/
 │   │       └── di/
 │   ├── src/commonTest/            # Shared unit tests + fakes/fixtures
@@ -232,7 +234,7 @@ Add `Secrets.plist` to `.gitignore` if it is not already excluded.
 ./gradlew :composeApp:testDebugUnitTest
 ```
 
-Coverage includes domain use cases, mappers, `SafeApiClient` / `RemoteFailureMapper`, and ViewModels (with fakes in `commonTest`).
+Coverage includes domain use cases, mappers, `SafeApiClient` / `RemoteFailureMapper`, trade history ledger, and ViewModels (with fakes in `commonTest`).
 
 ### Instrumented UI tests (Android)
 
