@@ -7,9 +7,12 @@ import parinexus.kmp.first.core.domain.coin.Coin
 import parinexus.kmp.first.portfolio.domain.PortfolioRepository
 import parinexus.kmp.first.core.domain.Result
 import parinexus.kmp.first.portfolio.domain.PortfolioCoinModel
+import parinexus.kmp.first.trade.domain.model.TradeRecordDraft
+import parinexus.kmp.first.trade.domain.model.TradeType
 
 class BuyCoinUseCase(
     private val portfolioRepository: PortfolioRepository,
+    private val recordTradeUseCase: RecordTradeUseCase,
 ) {
 
     suspend fun buyCoin(
@@ -28,7 +31,7 @@ class BuyCoinUseCase(
             is Result.Error -> return Result.Error(existingCoinResult.error)
         }
         val amountInUnit = amountInFiat / price
-        if (existingCoin != null) {
+        val insertResult = if (existingCoin != null) {
             val newAmountOwned = existingCoin.ownedAmountInUnit + amountInUnit
             val newTotalInvestment = existingCoin.ownedAmountInFiat + amountInFiat
             val newAveragePurchasePrice = newTotalInvestment / newAmountOwned
@@ -36,8 +39,8 @@ class BuyCoinUseCase(
                 existingCoin.copy(
                     ownedAmountInUnit = newAmountOwned,
                     ownedAmountInFiat = newTotalInvestment,
-                    averagePurchasePrice = newAveragePurchasePrice
-                )
+                    averagePurchasePrice = newAveragePurchasePrice,
+                ),
             )
         } else {
             portfolioRepository.insertPortfolioCoin(
@@ -46,11 +49,22 @@ class BuyCoinUseCase(
                     performancePercent = 0.0,
                     averagePurchasePrice = price,
                     ownedAmountInFiat = amountInFiat,
-                    ownedAmountInUnit = amountInUnit
-                )
+                    ownedAmountInUnit = amountInUnit,
+                ),
             )
         }
+        if (insertResult is Result.Error) {
+            return insertResult
+        }
         portfolioRepository.updateCashBalance(balance - amountInFiat)
-        return Result.Success(Unit)
+        return recordTradeUseCase.execute(
+            TradeRecordDraft(
+                coin = coin,
+                type = TradeType.BUY,
+                amountInFiat = amountInFiat,
+                amountInUnit = amountInUnit,
+                priceAtTrade = price,
+            ),
+        )
     }
 }

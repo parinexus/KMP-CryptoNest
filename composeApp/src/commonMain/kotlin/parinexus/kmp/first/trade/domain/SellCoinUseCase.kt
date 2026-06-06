@@ -6,9 +6,12 @@ import parinexus.kmp.first.core.domain.EmptyResult
 import parinexus.kmp.first.core.domain.coin.Coin
 import parinexus.kmp.first.portfolio.domain.PortfolioRepository
 import parinexus.kmp.first.core.domain.Result
+import parinexus.kmp.first.trade.domain.model.TradeRecordDraft
+import parinexus.kmp.first.trade.domain.model.TradeType
 
 class SellCoinUseCase(
     private val portfolioRepository: PortfolioRepository,
+    private val recordTradeUseCase: RecordTradeUseCase,
 ) {
 
     suspend fun sellCoin(
@@ -31,15 +34,28 @@ class SellCoinUseCase(
                 if (remainingAmountFiat < sellAllThreshold) {
                     portfolioRepository.removePortfolioCoin(coin.id)
                 } else {
-                    portfolioRepository.insertPortfolioCoin(
-                        existingCoin.copy(
-                            ownedAmountInUnit = remainingAmountUnit,
-                            ownedAmountInFiat = remainingAmountFiat,
+                    when (
+                        val updateResult = portfolioRepository.insertPortfolioCoin(
+                            existingCoin.copy(
+                                ownedAmountInUnit = remainingAmountUnit,
+                                ownedAmountInFiat = remainingAmountFiat,
+                            ),
                         )
-                    )
+                    ) {
+                        is Result.Error -> return updateResult
+                        is Result.Success -> Unit
+                    }
                 }
                 portfolioRepository.updateCashBalance(balance + amountInFiat)
-                return Result.Success(Unit)
+                return recordTradeUseCase.execute(
+                    TradeRecordDraft(
+                        coin = coin,
+                        type = TradeType.SELL,
+                        amountInFiat = amountInFiat,
+                        amountInUnit = sellAmountInUnit,
+                        priceAtTrade = price,
+                    ),
+                )
             }
             is Result.Error -> {
                 return existingCoinResponse
