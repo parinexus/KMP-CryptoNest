@@ -9,15 +9,25 @@ import kotlinx.coroutines.test.runTest
 import parinexus.kmp.first.core.domain.DataError
 import parinexus.kmp.first.core.domain.Result
 import parinexus.kmp.first.test.fake.FakePortfolioRepository
+import parinexus.kmp.first.test.fake.FakeTradeHistoryRepository
 import parinexus.kmp.first.test.fixture.TestCoins
 import parinexus.kmp.first.test.fixture.TestPortfolio
+import parinexus.kmp.first.trade.domain.model.TradeType
 
 class BuyCoinUseCaseTest {
+
+    private fun createUseCase(
+        portfolio: FakePortfolioRepository,
+        tradeHistory: FakeTradeHistoryRepository = FakeTradeHistoryRepository(),
+    ) = BuyCoinUseCase(
+        portfolioRepository = portfolio,
+        recordTradeUseCase = RecordTradeUseCase(tradeHistory),
+    )
 
     @Test
     fun buyCoin_returnsInsufficientFundsWhenBalanceTooLow() = runTest {
         val repository = FakePortfolioRepository(cashBalance = 100.0)
-        val useCase = BuyCoinUseCase(repository)
+        val useCase = createUseCase(repository)
 
         val result = useCase.buyCoin(
             coin = TestCoins.bitcoin,
@@ -32,7 +42,8 @@ class BuyCoinUseCaseTest {
     @Test
     fun buyCoin_insertsNewHoldingAndDeductsCash() = runTest {
         val repository = FakePortfolioRepository(cashBalance = 10_000.0)
-        val useCase = BuyCoinUseCase(repository)
+        val tradeHistory = FakeTradeHistoryRepository()
+        val useCase = createUseCase(repository, tradeHistory)
 
         val result = useCase.buyCoin(
             coin = TestCoins.bitcoin,
@@ -44,6 +55,8 @@ class BuyCoinUseCaseTest {
         assertThat(repository.insertedCoins).hasSize(1)
         assertThat(repository.insertedCoins.first().ownedAmountInUnit).isEqualTo(0.02)
         assertThat(repository.updatedCashBalances.last()).isEqualTo(9_000.0)
+        assertThat(tradeHistory.recordedDrafts).hasSize(1)
+        assertThat(tradeHistory.recordedDrafts.first().type).isEqualTo(TradeType.BUY)
     }
 
     @Test
@@ -57,7 +70,7 @@ class BuyCoinUseCaseTest {
             cashBalance = 10_000.0,
             ownedCoins = mapOf(TestCoins.BITCOIN_ID to existing),
         )
-        val useCase = BuyCoinUseCase(repository)
+        val useCase = createUseCase(repository)
 
         val result = useCase.buyCoin(
             coin = TestCoins.bitcoin,
@@ -77,7 +90,7 @@ class BuyCoinUseCaseTest {
         val repository = FakePortfolioRepository(cashBalance = 10_000.0).apply {
             setPortfolioLookupResult(Result.Error(DataError.Remote.NO_INTERNET))
         }
-        val useCase = BuyCoinUseCase(repository)
+        val useCase = createUseCase(repository)
 
         val result = useCase.buyCoin(
             coin = TestCoins.bitcoin,
@@ -86,5 +99,18 @@ class BuyCoinUseCaseTest {
         )
 
         assertThat(result).isEqualTo(Result.Error(DataError.Remote.NO_INTERNET))
+    }
+
+    @Test
+    fun buyCoin_doesNotRecordTradeWhenInsufficientFunds() = runTest {
+        val tradeHistory = FakeTradeHistoryRepository()
+        val useCase = createUseCase(
+            FakePortfolioRepository(cashBalance = 10.0),
+            tradeHistory,
+        )
+
+        useCase.buyCoin(TestCoins.bitcoin, amountInFiat = 500.0, price = 50_000.0)
+
+        assertThat(tradeHistory.recordedDrafts).hasSize(0)
     }
 }

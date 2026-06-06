@@ -16,7 +16,9 @@ import parinexus.kmp.first.test.fake.FakeCoinsRepository
 import parinexus.kmp.first.test.fake.FakePortfolioRepository
 import parinexus.kmp.first.test.fixture.TestCoins
 import parinexus.kmp.first.test.rule.MainCoroutineRule
+import parinexus.kmp.first.test.fake.FakeTradeHistoryRepository
 import parinexus.kmp.first.trade.domain.BuyCoinUseCase
+import parinexus.kmp.first.trade.domain.RecordTradeUseCase
 
 class BuyViewModelTest : MainCoroutineRule() {
 
@@ -90,7 +92,10 @@ class BuyViewModelTest : MainCoroutineRule() {
         return BuyViewModel(
             getCoinDetailsUseCase = FetchCoinDetailsUseCase(coinsRepository),
             portfolioRepository = repository,
-            buyCoinUseCase = BuyCoinUseCase(repository),
+            buyCoinUseCase = BuyCoinUseCase(
+                portfolioRepository = repository,
+                recordTradeUseCase = RecordTradeUseCase(FakeTradeHistoryRepository()),
+            ),
             coinId = TestCoins.BITCOIN_ID,
         )
     }

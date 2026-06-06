@@ -10,15 +10,25 @@ import kotlinx.coroutines.test.runTest
 import parinexus.kmp.first.core.domain.DataError
 import parinexus.kmp.first.core.domain.Result
 import parinexus.kmp.first.test.fake.FakePortfolioRepository
+import parinexus.kmp.first.test.fake.FakeTradeHistoryRepository
 import parinexus.kmp.first.test.fixture.TestCoins
 import parinexus.kmp.first.test.fixture.TestPortfolio
+import parinexus.kmp.first.trade.domain.model.TradeType
 
 class SellCoinUseCaseTest {
+
+    private fun createUseCase(
+        portfolio: FakePortfolioRepository,
+        tradeHistory: FakeTradeHistoryRepository = FakeTradeHistoryRepository(),
+    ) = SellCoinUseCase(
+        portfolioRepository = portfolio,
+        recordTradeUseCase = RecordTradeUseCase(tradeHistory),
+    )
 
     @Test
     fun sellCoin_returnsInsufficientFundsWhenNotOwned() = runTest {
         val repository = FakePortfolioRepository()
-        val useCase = SellCoinUseCase(repository)
+        val useCase = createUseCase(repository)
 
         val result = useCase.sellCoin(
             coin = TestCoins.bitcoin,
@@ -39,7 +49,7 @@ class SellCoinUseCaseTest {
                 ),
             ),
         )
-        val useCase = SellCoinUseCase(repository)
+        val useCase = createUseCase(repository)
 
         val result = useCase.sellCoin(
             coin = TestCoins.bitcoin,
@@ -52,6 +62,7 @@ class SellCoinUseCaseTest {
 
     @Test
     fun sellCoin_partialSellUpdatesHoldingAndIncreasesCash() = runTest {
+        val tradeHistory = FakeTradeHistoryRepository()
         val repository = FakePortfolioRepository(
             cashBalance = 1_000.0,
             ownedCoins = mapOf(
@@ -62,7 +73,7 @@ class SellCoinUseCaseTest {
                 ),
             ),
         )
-        val useCase = SellCoinUseCase(repository)
+        val useCase = createUseCase(repository, tradeHistory)
 
         val result = useCase.sellCoin(
             coin = TestCoins.bitcoin,
@@ -74,6 +85,7 @@ class SellCoinUseCaseTest {
         assertThat(repository.removedCoinIds).hasSize(0)
         assertThat(repository.insertedCoins.last().ownedAmountInFiat).isEqualTo(500.0)
         assertThat(repository.updatedCashBalances.last()).isEqualTo(1_500.0)
+        assertThat(tradeHistory.recordedDrafts.first().type).isEqualTo(TradeType.SELL)
     }
 
     @Test
@@ -87,7 +99,7 @@ class SellCoinUseCaseTest {
                 ),
             ),
         )
-        val useCase = SellCoinUseCase(repository)
+        val useCase = createUseCase(repository)
 
         val result = useCase.sellCoin(
             coin = TestCoins.bitcoin,
@@ -104,7 +116,7 @@ class SellCoinUseCaseTest {
         val repository = FakePortfolioRepository().apply {
             setPortfolioLookupResult(Result.Error(DataError.Remote.SERVER))
         }
-        val useCase = SellCoinUseCase(repository)
+        val useCase = createUseCase(repository)
 
         val result = useCase.sellCoin(
             coin = TestCoins.bitcoin,
