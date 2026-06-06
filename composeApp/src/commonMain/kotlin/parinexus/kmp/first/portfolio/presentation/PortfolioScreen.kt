@@ -24,13 +24,16 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import org.koin.compose.viewmodel.koinViewModel
+import parinexus.kmp.first.core.testing.CoinTestTags
 import parinexus.kmp.first.theme.LocalCoinColorsPalette
+import androidx.compose.ui.platform.testTag
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PortfolioScreen(
     onCoinItemClicked: (String) -> Unit,
     onDiscoverCoinsClicked: () -> Unit,
+    onTradeHistoryClicked: () -> Unit,
 ) {
     val viewModel = koinViewModel<PortfolioViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -44,6 +47,18 @@ fun PortfolioScreen(
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onPrimary
                     )
+                },
+                actions = {
+                    TextButton(
+                        onClick = onTradeHistoryClicked,
+                        modifier = Modifier.testTag(CoinTestTags.PORTFOLIO_TRADE_HISTORY),
+                    ) {
+                        Text(
+                            text = "History",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                    }
                 },
                 colors = centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary

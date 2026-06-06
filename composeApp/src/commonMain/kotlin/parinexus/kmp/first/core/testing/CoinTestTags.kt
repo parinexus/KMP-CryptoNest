@@ -1,6 +1,8 @@
 package parinexus.kmp.first.core.testing
 
 object CoinTestTags {
+    const val PORTFOLIO_TRADE_HISTORY = "portfolio_trade_history"
+
     const val COINS_DASHBOARD_TITLE = "coins_dashboard_title"
     const val COINS_LIST_INTERACTION_HINT = "coins_list_interaction_hint"
     const val COINS_CACHE_BANNER = "coins_cache_banner"
@@ -29,4 +31,12 @@ object CoinTestTags {
     const val COIN_DETAIL_DESCRIPTION = "coin_detail_description"
     const val COIN_DETAIL_BUY = "coin_detail_buy"
     const val COIN_DETAIL_SELL = "coin_detail_sell"
+
+    const val TRADE_HISTORY_TITLE = "trade_history_title"
+    const val TRADE_HISTORY_BACK = "trade_history_back"
+    const val TRADE_HISTORY_LOADING = "trade_history_loading"
+    const val TRADE_HISTORY_EMPTY = "trade_history_empty"
+    const val TRADE_HISTORY_LIST = "trade_history_list"
+
+    fun tradeHistoryItem(tradeId: Long): String = "trade_history_item_$tradeId"
 }

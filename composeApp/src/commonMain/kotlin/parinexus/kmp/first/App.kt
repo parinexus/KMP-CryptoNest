@@ -20,7 +20,9 @@ import parinexus.kmp.first.core.navigation.CoinDetail
 import parinexus.kmp.first.core.navigation.Coins
 import parinexus.kmp.first.core.navigation.Portfolio
 import parinexus.kmp.first.core.navigation.Sell
+import parinexus.kmp.first.core.navigation.TradeHistory
 import parinexus.kmp.first.trade.presentation.buy.BuyScreen
+import parinexus.kmp.first.trade.presentation.history.TradeHistoryScreen
 import parinexus.kmp.first.trade.presentation.sell.SellScreen
 
 @Composable
@@ -47,7 +49,16 @@ fun App() {
                     },
                     onDiscoverCoinsClicked = {
                         navController.navigate(Coins)
-                    }
+                    },
+                    onTradeHistoryClicked = {
+                        navController.navigate(TradeHistory)
+                    },
+                )
+            }
+
+            composable<TradeHistory> {
+                TradeHistoryScreen(
+                    onNavigateBack = { navController.popBackStack() },
                 )
             }
 

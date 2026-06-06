@@ -28,9 +28,14 @@ import parinexus.kmp.first.core.serialization.AppJson
 import parinexus.kmp.first.portfolio.data.PortfolioRepositoryImpl
 import parinexus.kmp.first.portfolio.domain.PortfolioRepository
 import parinexus.kmp.first.portfolio.presentation.PortfolioViewModel
+import parinexus.kmp.first.trade.data.repository.TradeHistoryRepositoryImpl
 import parinexus.kmp.first.trade.domain.BuyCoinUseCase
+import parinexus.kmp.first.trade.domain.ObserveTradeHistoryUseCase
+import parinexus.kmp.first.trade.domain.RecordTradeUseCase
 import parinexus.kmp.first.trade.domain.SellCoinUseCase
+import parinexus.kmp.first.trade.domain.repository.TradeHistoryRepository
 import parinexus.kmp.first.trade.presentation.buy.BuyViewModel
+import parinexus.kmp.first.trade.presentation.history.TradeHistoryViewModel
 import parinexus.kmp.first.trade.presentation.sell.SellViewModel
 
 fun initKoin(config: KoinAppDeclaration? = null) =
@@ -58,6 +63,7 @@ val sharedModule = module {
     single { get<PortfolioDatabase>().portfolioDao() }
     single { get<PortfolioDatabase>().userBalanceDao() }
     single { get<PortfolioDatabase>().marketCacheDao() }
+    single { get<PortfolioDatabase>().tradeHistoryDao() }
     singleOf(::MarketLocalDataSourceImpl).bind<MarketLocalDataSource>()
     singleOf(::CoinsRemoteDataSourceImpl).bind<CoinsRemoteDataSource>()
     singleOf(::CoinsRepositoryImpl).bind<CoinsRepository>()
@@ -72,8 +78,12 @@ val sharedModule = module {
     viewModel { (coinId: String) -> CoinDetailViewModel(get(), get(), coinId) }
 
     // trade
+    singleOf(::TradeHistoryRepositoryImpl).bind<TradeHistoryRepository>()
+    singleOf(::RecordTradeUseCase)
+    singleOf(::ObserveTradeHistoryUseCase)
     singleOf(::BuyCoinUseCase)
     singleOf(::SellCoinUseCase)
+    viewModel { TradeHistoryViewModel(get()) }
     viewModel { (coinId: String) -> BuyViewModel(get(), get(), get(), coinId) }
     viewModel { (coinId: String) -> SellViewModel(get(), get(), get(), coinId) }
 }

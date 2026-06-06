@@ -16,3 +16,6 @@ data class Buy(val coinId: String)
 
 @Serializable
 data class Sell(val coinId: String)
+
+@Serializable
+object TradeHistory
