@@ -12,6 +12,8 @@ import parinexus.kmp.first.portfolio.data.local.PortfolioCoinEntity
 import parinexus.kmp.first.portfolio.data.local.PortfolioDao
 import parinexus.kmp.first.portfolio.data.local.UserBalanceDao
 import parinexus.kmp.first.portfolio.data.local.UserBalanceEntity
+import parinexus.kmp.first.trade.data.local.TradeRecordEntity
+import parinexus.kmp.first.trade.data.local.TradeHistoryDao
 
 @ConstructedBy(PortfolioDatabaseCreator::class)
 @Database(
@@ -22,11 +24,13 @@ import parinexus.kmp.first.portfolio.data.local.UserBalanceEntity
         MarketCacheMetaEntity::class,
         CachedCoinDetailEntity::class,
         CachedPriceHistoryEntity::class,
+        TradeRecordEntity::class,
     ],
-    version = 4,
+    version = 5,
 )
 abstract class PortfolioDatabase : RoomDatabase() {
     abstract fun portfolioDao(): PortfolioDao
     abstract fun userBalanceDao(): UserBalanceDao
     abstract fun marketCacheDao(): MarketCacheDao
+    abstract fun tradeHistoryDao(): TradeHistoryDao
 }

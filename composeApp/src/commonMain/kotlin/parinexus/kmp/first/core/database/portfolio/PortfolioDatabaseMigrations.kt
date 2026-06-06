@@ -55,3 +55,24 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         )
     }
 }
+
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `trade_records` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `coinId` TEXT NOT NULL,
+                `coinName` TEXT NOT NULL,
+                `coinSymbol` TEXT NOT NULL,
+                `coinIconUrl` TEXT NOT NULL,
+                `type` TEXT NOT NULL,
+                `amountInFiat` REAL NOT NULL,
+                `amountInUnit` REAL NOT NULL,
+                `priceAtTrade` REAL NOT NULL,
+                `executedAtEpochMs` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+    }
+}
