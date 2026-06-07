@@ -88,12 +88,12 @@ fun PortfolioScreen(
             AnimatedVisibility(
                 visible = state.isLoading,
                 enter = fadeIn(),
-                exit = fadeOut()
+                exit = fadeOut(),
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     CircularProgressIndicator(
                         color = LocalCoinColorsPalette.current.profitGreen,
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(48.dp),
                     )
                 }
             }
@@ -101,12 +101,12 @@ fun PortfolioScreen(
             AnimatedVisibility(
                 visible = !state.isLoading,
                 enter = fadeIn(),
-                exit = fadeOut()
+                exit = fadeOut(),
             ) {
                 PortfolioContent(
                     state = state,
                     onCoinItemClicked = onCoinItemClicked,
-                    onDiscoverCoinsClicked = onDiscoverCoinsClicked
+                    onDiscoverCoinsClicked = onDiscoverCoinsClicked,
                 )
             }
         }
