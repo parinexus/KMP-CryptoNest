@@ -3,11 +3,13 @@ package parinexus.kmp.first
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.koin.compose.KoinContext
+import org.koin.compose.koinInject
 import parinexus.kmp.first.coins.presentation.CoinsGridScreen
 import parinexus.kmp.first.coins.presentation.detail.CoinDetailScreen
 import parinexus.kmp.first.portfolio.presentation.PortfolioScreen
@@ -28,19 +30,35 @@ import parinexus.kmp.first.trade.presentation.sell.SellScreen
 @Composable
 @Preview
 fun App() {
+    KoinContext {
+        AppBootstrap()
+        AppNavHost()
+    }
+}
+
+@Composable
+private fun AppBootstrap() {
+    val appInitializer: AppInitializer = koinInject()
+    LaunchedEffect(appInitializer) {
+        appInitializer.initialize()
+    }
+}
+
+@Composable
+private fun AppNavHost() {
     val navController: NavHostController = rememberNavController()
 
     CoinTheme {
         SetSystemBarsColor(
             statusBarColor = MaterialTheme.colorScheme.primary,
             navigationBarColor = MaterialTheme.colorScheme.background,
-            darkIcons = true
+            darkIcons = true,
         )
 
         NavHost(
             navController = navController,
             startDestination = Portfolio,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         ) {
             composable<Portfolio> {
                 PortfolioScreen(
@@ -86,7 +104,7 @@ fun App() {
                         navController.navigate(Portfolio) {
                             popUpTo(Portfolio) { inclusive = true }
                         }
-                    }
+                    },
                 )
             }
             composable<Sell> { navBackStackEntry ->
@@ -98,10 +116,9 @@ fun App() {
                         navController.navigate(Portfolio) {
                             popUpTo(Portfolio) { inclusive = true }
                         }
-                    }
+                    },
                 )
             }
-
         }
     }
 }
