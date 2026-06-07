@@ -1,25 +1,28 @@
 # CryptoNest
 
-Cross-platform cryptocurrency portfolio sample built with **Kotlin Multiplatform (KMP)** and **Compose Multiplatform**.  
-A single shared codebase powers **Android** and **iOS**, demonstrating production-oriented patterns: layered architecture, modular API error handling, local persistence, and automated testing.
+A **Kotlin Multiplatform (KMP)** sample app for managing a simulated crypto portfolio on **Android** and **iOS**. Built with **Compose Multiplatform**, it demonstrates modular Clean Architecture, offline-first networking, Room persistence, and testable domain logic—the kind of structure you would discuss in a senior mobile or KMP interview.
 
-> **Scope** — This repository is a reference implementation for learning and technical interviews. It is not a regulated financial product and must not be used for real trading without a full security, compliance, and operational review.
+> **Scope** — Reference implementation for learning and technical evaluation. Not a regulated financial product. Do not use for real trading without security, compliance, and operational review.
 
 ---
 
 ## Table of contents
 
 - [Features](#features)
+- [Design principles](#design-principles)
 - [Architecture](#architecture)
+- [Key flows](#key-flows)
 - [Tech stack](#tech-stack)
-- [Repository layout](#repository-layout)
+- [Project structure](#project-structure)
 - [Prerequisites](#prerequisites)
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
 - [Running the app](#running-the-app)
 - [Testing](#testing)
+- [Known limitations](#known-limitations)
 - [Troubleshooting](#troubleshooting)
-- [Security notes](#security-notes)
+- [Security](#security)
+- [License & acknowledgements](#license--acknowledgements)
 
 ---
 
@@ -27,79 +30,143 @@ A single shared codebase powers **Android** and **iOS**, demonstrating productio
 
 | Area | Description |
 |------|-------------|
-| **Portfolio** | View holdings, total value, and navigate to buy/sell flows |
-| **Market browse** | Coin grid with live prices from [Coinranking API](https://coinranking.com/) |
-| **Trade** | Simulated buy/sell against a local cash balance (Room) |
-| **Trade history** | Persistent ledger of every buy/sell with amounts, price, and timestamp |
-| **24h chart** | Long-press a coin to load price history in a dialog |
-| **Resilient UI** | Loading, empty, and error states with retry on the coins list |
-| **API errors** | Normalised remote failures (timeouts, rate limits, API messages) |
-| **Offline-first market data** | Room-backed cache with TTL, pull-to-refresh, and freshness banners |
+| **Portfolio** | Holdings, **Total Balance** (cash + market value), and breakdown (holdings vs cash) |
+| **Market** | Coin grid with live prices from the [Coinranking API](https://coinranking.com/) |
+| **Trade** | Simulated buy/sell against a local cash balance |
+| **Trade history** | Persistent ledger (amount, price, timestamp) for every trade |
+| **Charts** | Long-press a coin on the grid to load 24h price history |
+| **Resilience** | Loading, empty, and error states with retry |
+| **API errors** | Normalized remote failures (timeouts, rate limits, API messages) |
+| **Offline-first** | Room cache with TTL, pull-to-refresh, and freshness indicators |
+
+---
+
+## Design principles
+
+| Principle | How it shows up |
+|-----------|-----------------|
+| **Modular boundaries** | Feature modules depend on contracts (`feature:coins-api`), not on each other's internals |
+| **Single write path** | Portfolio mutations go only through `TradePortfolioWriter` inside Room `@Transaction` blocks |
+| **Separation of concerns** | `PortfolioHolding` (cost basis, units) vs `PortfolioCoinModel` (UI + market value) |
+| **Cache-first reads** | `CoinsRepository` coordinates network + Room; UI observes `Flow`/`Result` |
+| **Side effects at the edge** | Cash seeding runs in `AppInitializer` at startup—not in ViewModels |
+| **Testability** | Shared fakes/fixtures in `core:testing`; DAO and repository tests cover critical paths |
 
 ---
 
 ## Architecture
 
-The app follows **Clean Architecture** with feature modules (`coins`, `portfolio`, `trade`) and shared infrastructure under `core`.
+The project follows **Clean Architecture** with Gradle modules aligned to [Google's modularization guidance](https://developer.android.com/topic/modularization) (Now in Android style).
 
 ```mermaid
 flowchart TB
-    subgraph presentation [Presentation]
-        UI[Compose UI + ViewModels]
+    subgraph app [composeApp]
+        APP["App shell · NavHost · Koin · AppInitializer"]
     end
-    subgraph domain [Domain]
-        UC[Use cases]
-        DM[Domain models]
+    subgraph features [Features]
+        FCA[feature:coins-api]
+        FC[feature:coins]
+        FP[feature:portfolio]
+        FT[feature:trade]
     end
-    subgraph data [Data]
-        REPO[Repositories]
-        RDS[Remote data sources]
-        LDS[Room DAOs]
-    end
-    subgraph core_api [core/api]
-        SAFE[SafeApiClient]
-        MAP[RemoteFailureMapper]
-        PARSER[ApiErrorResponseParser]
-    end
-    subgraph network [core/network]
-        HTTP[Ktor HttpClient]
+    subgraph core [Core]
+        CD[core:domain]
+        CN[core:network]
+        CDB[core:database]
+        CA[core:api]
+        CUI[core:ui]
+        CDS[core:designsystem]
+        CNav[core:navigation]
+        CT[core:testing]
     end
 
-    UI --> UC
-    UC --> REPO
-    REPO --> RDS
-    REPO --> LDS
-    RDS --> SAFE
-    SAFE --> HTTP
-    SAFE --> MAP
-    MAP --> PARSER
+    APP --> FC & FP & FT & CUI & CDS & CNav
+    FC --> FCA & CA & CDB & CN & CD & CUI & CDS & CNav
+    FP --> FCA & CDB & CD & CUI & CDS
+    FT --> FP & FC & CDB & CD & CUI & CDS & CNav
+    FCA --> CD
+    CA --> CN & CD
+    CN --> CD
+    CDB --> CD
+    CUI --> CD & CDS
+    FC & FP & FT -.->|testImplementation| CT
 ```
 
-### Layer responsibilities
+Each feature module organizes code into **data → domain → presentation** packages. Dependencies point inward; no feature module depends on `composeApp`.
 
-| Layer | Responsibility |
-|-------|----------------|
-| **Presentation** | Compose screens, `StateFlow` UI state, navigation |
-| **Domain** | Use cases, `Result<T, E>`, business rules (no Android/iOS APIs) |
-| **Data** | DTO mapping, repositories, Ktor + Room implementations |
-| **core/api** | HTTP safety, Coinranking error parsing, user-facing error mapping |
-| **core** | Navigation routes, shared `DataError`, DI modules, theme |
+### Module responsibilities
+
+| Module | Role |
+|--------|------|
+| **core:domain** | `Result`, `DataError`, shared models, cache policy |
+| **core:network** | Ktor `HttpClient`, secrets interface, network DI |
+| **core:database** | Room database, entities, DAOs, migrations, exported schemas |
+| **core:api** | `SafeApiClient`, remote failure mapping |
+| **core:ui** | Shared Compose components, formatters, strings |
+| **core:designsystem** | Material 3 theme (`CoinTheme`) |
+| **core:navigation** | Type-safe navigation routes |
+| **core:testing** | Shared test fakes, fixtures, and coroutine rules |
+| **feature:coins-api** | Public market contract (`CoinsRepository`, coin models) |
+| **feature:coins** | Market list, detail, chart |
+| **feature:portfolio** | Portfolio screen and repository |
+| **feature:trade** | Buy/sell flows and trade history |
+| **composeApp** | Application entry, platform secrets, Android UI tests |
 
 ### Dependency rule
 
-Dependencies point **inward**: `presentation → domain ← data`. Platform code (`androidMain`, `iosMain`) only provides `expect/actual` boundaries (secrets, database factory, system UI).
+`presentation → domain ← data`. Platform code (`androidMain` / `iosMain`) provides `expect`/`actual` boundaries only (secrets, database builder, system UI).
 
-### Offline-first market cache (single source of truth)
+---
 
-Market reads go through **`CoinsRepository`** — the only entry point for coin list, coin detail, and 24h price history. Remote calls update Room; the UI observes `Flow`/`Result` wrapped in `CachedData` with `DataFreshness` (`Fresh`, `Cached`, `Stale`, `Offline`).
+## Key flows
 
-| Data | TTL (`MarketCachePolicy`) | Storage |
-|------|---------------------------|---------|
-| Coin list & detail | 5 minutes | `CachedCoinEntity`, `CachedCoinDetailEntity` |
-| Price history (charts) | 15 minutes | `CachedPriceHistoryEntity` |
-| Trade records | Permanent (local ledger) | `TradeRecordEntity` |
+### Market data (offline-first)
 
-On network failure, the repository serves the last persisted snapshot when available. Portfolio valuation can fall back to the cached coin list for holding prices. Pull-to-refresh on the coins grid and coin detail triggers `forceRefresh`.
+All market reads go through **`CoinsRepository`**. Remote responses are persisted to Room; the UI observes `CachedData<T>` with `DataFreshness` (`Fresh`, `Cached`, `Stale`, `Offline`).
+
+| Data | TTL | Storage |
+|------|-----|---------|
+| Coin list & detail | 5 min | `CachedCoinEntity`, `CachedCoinDetailEntity` |
+| Price history | 15 min | `CachedPriceHistoryEntity` |
+| Trade records | Permanent | `TradeRecordEntity` |
+
+On network failure, the repository serves the last cached snapshot when available. Pull-to-refresh passes `forceRefresh = true`.
+
+### Portfolio valuation
+
+`observePortfolioSnapshot()` combines:
+
+1. **Priced holdings** — `resolveMarketPrices()` runs only when holdings change (`distinctUntilChanged` on coin id, amount, and average cost).
+2. **Cash balance** — reactive stream from `UserBalanceDao.observeCashBalance()`.
+
+Cash-only updates after buy/sell **do not** trigger a new price resolution pass.
+
+When market prices are unavailable, valuation falls back to `averagePurchasePrice` per holding.
+
+### Trade execution (atomic writes)
+
+Buy and sell use **`TradePortfolioWriter`**, the sole production path for portfolio mutations:
+
+| Step | Behavior |
+|------|----------|
+| Buy | `deductCash(amount)` with SQL guard → upsert holding → insert trade record |
+| Sell | Update or remove holding → `addCash(amount)` → insert trade record |
+| Failure | `InsufficientFundsException` on buy when balance is insufficient; mapped to `DataError.Local.INSUFFICIENT_FUNDS` |
+
+All steps run inside a Room **`@Transaction`**.
+
+### App bootstrap
+
+`AppInitializer` seeds the default cash balance (`$10,000`) once on startup via `PortfolioRepository.initUserBalance()`. Invoked from `CoinApplication` (Android) and `MainViewController` (iOS)—not from presentation layer.
+
+### Domain models (portfolio vs trade)
+
+| Model | Purpose |
+|-------|---------|
+| **`PortfolioHolding`** | Persisted position (units + average cost). Used by buy/sell—no live market price. |
+| **`PortfolioCoinModel`** | UI model with `marketValueFiat` and performance %. |
+| **`PortfolioSnapshot`** | Reactive read model: holdings, cash, `portfolioMarketValue`, `totalBalance`. |
+| **`TradePortfolioWriter`** | Atomic buy/sell + ledger writes. |
 
 ---
 
@@ -107,56 +174,53 @@ On network failure, the repository serves the last persisted snapshot when avail
 
 | Category | Libraries |
 |----------|-----------|
-| UI | Compose Multiplatform, Material 3 |
+| UI | Compose Multiplatform 1.7, Material 3 |
 | DI | Koin 4 |
 | Networking | Ktor 3, Kotlinx Serialization |
-| Local storage | Room 2.7 (KMP), SQLite bundled |
+| Persistence | Room 2.7 (KMP), SQLite bundled |
 | Images | Coil 3 |
 | Navigation | Navigation Compose (type-safe routes) |
-| Async | Kotlin Coroutines, `StateFlow` |
+| Concurrency | Kotlin Coroutines, `StateFlow` |
 | Unit tests | kotlin-test, AssertK, Turbine, coroutines-test |
 | UI tests (Android) | Compose UI Test, AndroidX Test |
 
-**Targets:** Android API 24+, iOS (X64 / Arm64 / Simulator Arm64)  
-**Toolchain:** JDK 17, Kotlin 2.0.21, Gradle 8.x
+**Targets:** Android API 24+ · iOS (x64, arm64, simulator arm64)  
+**Toolchain:** JDK 17 · Kotlin 2.0.21 · Gradle 8.x · AGP 8.5
 
 ---
 
-## Repository layout
+## Project structure
 
 ```
 KMP-CryptoNest/
-├── composeApp/                    # Shared KMP application module
-│   ├── src/commonMain/            # Shared Kotlin + Compose
-│   │   └── kotlin/.../first/
-│   │       ├── core/              # api, network, database, navigation, presentation
-│   │       ├── coins/             # Feature: market list + chart
-│   │       ├── portfolio/         # Feature: holdings
-│   │       ├── trade/             # Feature: buy / sell + trade history ledger + trade history ledger
-│   │       ├── theme/
-│   │       └── di/
-│   ├── src/commonTest/            # Shared unit tests + fakes/fixtures
-│   ├── src/androidMain/
-│   ├── src/androidUnitTest/
-│   ├── src/androidInstrumentedTest/
-│   ├── src/iosMain/
-│   └── schemas/                   # Room schema exports
-├── iosApp/                        # Xcode wrapper for iOS
-├── gradle/
-└── README.md
+├── composeApp/                 # App shell, Koin bootstrap, AppInitializer, platform entry
+├── core/
+│   ├── domain/                 # Result, DataError, shared domain models
+│   ├── network/                # Ktor client, AppSecrets
+│   ├── database/               # Room DB, DAOs, migrations, schemas/
+│   ├── api/                    # SafeApiClient, remote error mapping
+│   ├── ui/                     # Shared Compose UI, formatters
+│   ├── designsystem/           # Material 3 theme
+│   ├── navigation/             # Type-safe routes
+│   └── testing/                # Shared fakes & fixtures (test-only)
+├── feature/
+│   ├── coins-api/              # Public CoinsRepository contract
+│   ├── coins/                  # Market list, detail, chart
+│   ├── portfolio/              # Portfolio screen + repository
+│   └── trade/                  # Buy/sell + trade history
+├── iosApp/                     # Xcode wrapper
+└── gradle/
 ```
 
 ---
 
 ## Prerequisites
 
-Install and verify the following before building:
-
 | Tool | Version (tested) |
 |------|------------------|
 | JDK | 17 |
 | Android Studio | Hedgehog or newer (KMP + Compose plugins) |
-| Xcode | 15+ (macOS only, for iOS) |
+| Xcode | 15+ (macOS, for iOS) |
 | Coinranking API key | [Developer dashboard](https://account.coinranking.com/dashboard/api) |
 
 ---
@@ -168,24 +232,24 @@ git clone https://github.com/<your-org>/KMP-CryptoNest.git
 cd KMP-CryptoNest
 ```
 
-Configure credentials (see [Configuration](#configuration)) **before** the first Gradle sync.
+Configure API credentials (see [Configuration](#configuration)) **before** the first Gradle sync.
 
 ---
 
 ## Configuration
 
-Secrets are **never** committed. Use local files per platform.
+Secrets are never committed. Use platform-local files.
 
 ### Android — `local.properties` (project root)
 
-Create `local.properties` (Gradle reads it automatically; the file is git-ignored):
+Gradle reads this file automatically (git-ignored):
 
 ```properties
 API_KEY=your_coinranking_api_key
 BASE_URL=https://api.coinranking.com/v2/
 ```
 
-> Use a **trailing slash** on `BASE_URL`. Values are injected into `BuildConfig` and read via `AppSecrets`.
+Use a **trailing slash** on `BASE_URL`. Values are injected into `BuildConfig` and consumed via `AppSecrets`.
 
 ### iOS — `iosApp/iosApp/Secrets.plist`
 
@@ -202,7 +266,7 @@ BASE_URL=https://api.coinranking.com/v2/
 </plist>
 ```
 
-Add `Secrets.plist` to `.gitignore` if it is not already excluded.
+Ensure `Secrets.plist` is git-ignored.
 
 ---
 
@@ -211,7 +275,7 @@ Add `Secrets.plist` to `.gitignore` if it is not already excluded.
 ### Android
 
 1. Open the project in Android Studio.
-2. Select the **composeApp** run configuration (debug).
+2. Select the **composeApp** debug configuration.
 3. Run on an emulator or device.
 
 ```bash
@@ -220,7 +284,14 @@ Add `Secrets.plist` to `.gitignore` if it is not already excluded.
 
 ### iOS
 
-1. Build the shared framework: `./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64` (or the appropriate target).
+1. Build the shared framework:
+
+   ```bash
+   ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+   ```
+
+   Use the target that matches your machine/simulator (`IosArm64`, `IosX64`, etc.).
+
 2. Open `iosApp/iosApp.xcodeproj` in Xcode.
 3. Run on a simulator or device.
 
@@ -228,31 +299,73 @@ Add `Secrets.plist` to `.gitignore` if it is not already excluded.
 
 ## Testing
 
-### Unit tests (common + Android JVM)
+### Unit tests
+
+Run per module:
 
 ```bash
-./gradlew :composeApp:testDebugUnitTest
+./gradlew :core:api:testDebugUnitTest
+./gradlew :feature:coins:testDebugUnitTest
+./gradlew :feature:portfolio:testDebugUnitTest
+./gradlew :feature:trade:testDebugUnitTest
 ```
 
-Coverage includes domain use cases, mappers, `SafeApiClient` / `RemoteFailureMapper`, trade history ledger, and ViewModels (with fakes in `commonTest`).
+Run the main suite in one command:
 
-### Instrumented UI tests (Android)
+```bash
+./gradlew :composeApp:assembleDebug \
+  :core:api:testDebugUnitTest \
+  :feature:coins:testDebugUnitTest \
+  :feature:portfolio:testDebugUnitTest \
+  :feature:trade:testDebugUnitTest
+```
+
+**Coverage highlights**
+
+| Area | Tests |
+|------|-------|
+| Market cache | `CoinsRepositoryImplTest` — cache-first emit, stale refresh |
+| Portfolio pipeline | `PortfolioRepositoryImplTest` — no price re-resolve on cash-only change |
+| Holdings equality | `PortfolioHoldingsEqualityTest` — `distinctUntilChanged` predicate |
+| Trade domain | `BuyCoinUseCaseTest`, `SellCoinUseCaseTest` |
+| Atomic DB writes | `PortfolioTransactionDaoTest` (instrumented) |
+
+### Instrumented tests (Android)
 
 Requires a connected emulator or device:
 
 ```bash
 ./gradlew :composeApp:connectedDebugAndroidTest
+./gradlew :core:database:connectedDebugAndroidTest
 ```
 
-UI tests cover coin grid items and the price-chart dialog (`CoinTestTags` for stable selectors).
+Compose UI tests use stable `testTag`s from `CoinTestTags` (coin grid, chart dialog, trade history).
 
-### Test support code
+### Test utilities (`core:testing`)
 
-| Path | Purpose |
-|------|---------|
-| `commonTest/.../test/fixture/` | Reusable domain/DTO fixtures |
-| `commonTest/.../test/fake/` | Fake repositories and remote data sources |
-| `commonTest/.../test/rule/` | `MainCoroutineRule` for ViewModel tests |
+| Package | Contents |
+|---------|----------|
+| `test/fixture/` | `TestCoins`, `TestPortfolio`, `TestTrades` |
+| `test/fake/` | Fake repositories, data sources, `FakeTradePortfolioWriter` |
+| `test/rule/` | `MainCoroutineRule` for ViewModel tests |
+
+Feature modules consume this via `testImplementation(projects.core.testing)`.
+
+---
+
+## Known limitations
+
+This sample prioritizes clarity and interview-grade architecture over production completeness:
+
+| Topic | Current behavior |
+|-------|------------------|
+| **Concurrency** | Buy pre-checks balance outside the DB transaction; SQL guard on buy prevents overdraft at write time. Sell validates holdings in the use case only. |
+| **Bootstrap timing** | `AppInitializer` runs asynchronously; UI may briefly show the default balance before the Room row exists. |
+| **Financial accuracy** | Simulated trades; no slippage, fees, or real exchange integration. |
+| **Security** | No certificate pinning, backend proxy, or hardware-backed secret storage. |
+| **Scope** | Single-user local ledger; no auth, sync, or multi-device support. |
+
+These are intentional for a reference app and are reasonable discussion points in a system design interview.
 
 ---
 
@@ -260,30 +373,30 @@ UI tests cover coin grid items and the price-chart dialog (`CoinTestTags` for st
 
 | Symptom | Likely cause | Action |
 |---------|--------------|--------|
-| Empty coin list | DTO / API mismatch or missing key | Check Logcat tag `CryptoNest/Network`; verify `API_KEY` and `BASE_URL` |
-| `Property 'API_KEY' not found` | Missing `local.properties` | Create file at repo root (Android) |
-| Chart shows API message | Rate limit (HTTP 429) | Wait or upgrade Coinranking plan; message is surfaced in UI |
-| Request timeout | Slow network | Retries are configured in `HttpClientFactory`; increase timeouts if needed |
+| Empty coin list | Missing API key or DTO mismatch | Check Logcat tag `CryptoNest/Network`; verify `API_KEY` and `BASE_URL` |
+| `Property 'API_KEY' not found` | Missing `local.properties` | Create the file at the project root (Android) |
+| Chart shows API error | Rate limit (HTTP 429) | Wait or upgrade your Coinranking plan; error is surfaced in UI |
+| Request timeout | Slow network | Retries and timeouts live in `HttpClientFactory` |
 | UI tests fail to launch | Wrong activity / process | Instrumented tests use `ComposeHostActivity` in the debug manifest |
+| iOS build: `expect`/`actual` errors | Source set hierarchy | Ensure `applyDefaultHierarchyTemplate()` is enabled in `composeApp/build.gradle.kts` |
 
 ---
 
-## Security notes
+## Security
 
-- Do **not** commit `local.properties`, `Secrets.plist`, or API keys.
-- Market data is fetched over HTTPS; portfolio balances are stored **locally only**.
-- Biometric APIs are wired on Android for future use; treat this sample as **non-production** from a threat-modelling perspective.
-- Before any production deployment: certificate pinning, secret management (e.g. backend proxy), ProGuard/R8, and dependency auditing would be required.
-
----
-
-## Data disclaimer
-
-Prices and percentage changes are supplied by Coinranking for demonstration. Simulated trades update a local database only and do not represent real blockchain or exchange transactions.
+- Never commit `local.properties`, `Secrets.plist`, or API keys.
+- Market data is fetched over HTTPS; portfolio data is stored **locally only**.
+- Treat this repository as **non-production** from a threat-modeling perspective.
+- Production hardening would require: backend proxy for secrets, certificate pinning, ProGuard/R8, dependency auditing, and regulated-finance compliance review.
 
 ---
 
-## Acknowledgements
+## License & acknowledgements
+
+**Data disclaimer** — Prices and percentage changes come from Coinranking for demonstration. Simulated trades update a local database only; they do not represent blockchain or exchange transactions.
+
+**Acknowledgements**
 
 - Market data: [Coinranking API](https://coinranking.com/)
-- Built with [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) and [Compose Multiplatform](https://www.jetbrains.com/compose-multiplatform/)
+- [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html)
+- [Compose Multiplatform](https://www.jetbrains.com/compose-multiplatform/)
