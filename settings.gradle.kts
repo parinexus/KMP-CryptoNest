@@ -29,3 +29,17 @@ dependencyResolutionManagement {
 }
 
 include(":composeApp")
+
+include(":core:domain")
+include(":core:network")
+include(":core:database")
+include(":core:api")
+include(":core:designsystem")
+include(":core:ui")
+include(":core:navigation")
+include(":core:testing")
+
+include(":feature:coins-api")
+include(":feature:coins")
+include(":feature:portfolio")
+include(":feature:trade")
