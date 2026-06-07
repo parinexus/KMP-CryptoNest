@@ -1,0 +1,115 @@
+package parinexus.kmp.first.trade.domain
+
+import assertk.assertThat
+import assertk.assertions.contains
+import assertk.assertions.hasSize
+import assertk.assertions.isEqualTo
+import assertk.assertions.isTrue
+import kotlin.test.Test
+import kotlinx.coroutines.test.runTest
+import parinexus.kmp.first.core.domain.DataError
+import parinexus.kmp.first.core.domain.Result
+import parinexus.kmp.first.test.fake.FakePortfolioRepository
+import parinexus.kmp.first.test.fake.FakeTradeHistoryRepository
+import parinexus.kmp.first.test.fake.FakeTradePortfolioWriter
+import parinexus.kmp.first.test.fixture.TestCoins
+import parinexus.kmp.first.test.fixture.TestPortfolio
+import parinexus.kmp.first.trade.domain.model.TradeType
+
+class SellCoinUseCaseTest {
+
+    private fun createUseCase(
+        portfolio: FakePortfolioRepository,
+        tradeHistory: FakeTradeHistoryRepository = FakeTradeHistoryRepository(),
+    ): SellCoinUseCase {
+        val writer = FakeTradePortfolioWriter(portfolio, tradeHistory)
+        return SellCoinUseCase(
+            portfolioRepository = portfolio,
+            tradePortfolioWriter = writer,
+        )
+    }
+
+    @Test
+    fun sellCoin_returnsInsufficientFundsWhenNotOwned() = runTest {
+        val repository = FakePortfolioRepository()
+        val useCase = createUseCase(repository)
+
+        val result = useCase.sellCoin(
+            coin = TestCoins.bitcoin,
+            amountInFiat = 100.0,
+            price = 50_000.0,
+        )
+
+        assertThat(result).isEqualTo(Result.Error(DataError.Local.INSUFFICIENT_FUNDS))
+    }
+
+    @Test
+    fun sellCoin_returnsInsufficientFundsWhenSellingTooMuch() = runTest {
+        val repository = FakePortfolioRepository(
+            holdings = mapOf(
+                TestCoins.BITCOIN_ID to TestPortfolio.bitcoinPortfolioHolding(
+                    ownedAmountInUnit = 0.001,
+                ),
+            ),
+        )
+        val useCase = createUseCase(repository)
+
+        val result = useCase.sellCoin(
+            coin = TestCoins.bitcoin,
+            amountInFiat = 500.0,
+            price = 50_000.0,
+        )
+
+        assertThat(result).isEqualTo(Result.Error(DataError.Local.INSUFFICIENT_FUNDS))
+    }
+
+    @Test
+    fun sellCoin_partialSellUpdatesHoldingAndIncreasesCash() = runTest {
+        val tradeHistory = FakeTradeHistoryRepository()
+        val repository = FakePortfolioRepository(
+            cashBalance = 1_000.0,
+            holdings = mapOf(
+                TestCoins.BITCOIN_ID to TestPortfolio.bitcoinPortfolioHolding(
+                    ownedAmountInUnit = 0.02,
+                    averagePurchasePrice = 50_000.0,
+                ),
+            ),
+        )
+        val useCase = createUseCase(repository, tradeHistory)
+
+        val result = useCase.sellCoin(
+            coin = TestCoins.bitcoin,
+            amountInFiat = 500.0,
+            price = 50_000.0,
+        )
+
+        assertThat(result is Result.Success).isTrue()
+        assertThat(repository.removedCoinIds).hasSize(0)
+        assertThat(repository.appliedSellHoldings.last()?.ownedAmountInUnit).isEqualTo(0.01)
+        assertThat(repository.updatedCashBalances.last()).isEqualTo(1_500.0)
+        assertThat(tradeHistory.recordedDrafts.first().type).isEqualTo(TradeType.SELL)
+    }
+
+    @Test
+    fun sellCoin_fullSellRemovesCoinFromPortfolio() = runTest {
+        val repository = FakePortfolioRepository(
+            cashBalance = 0.0,
+            holdings = mapOf(
+                TestCoins.BITCOIN_ID to TestPortfolio.bitcoinPortfolioHolding(
+                    ownedAmountInUnit = 0.02,
+                    averagePurchasePrice = 50_000.0,
+                ),
+            ),
+        )
+        val useCase = createUseCase(repository)
+
+        val result = useCase.sellCoin(
+            coin = TestCoins.bitcoin,
+            amountInFiat = 1_000.0,
+            price = 50_000.0,
+        )
+
+        assertThat(result is Result.Success).isTrue()
+        assertThat(repository.removedCoinIds).contains(TestCoins.BITCOIN_ID)
+    }
+}

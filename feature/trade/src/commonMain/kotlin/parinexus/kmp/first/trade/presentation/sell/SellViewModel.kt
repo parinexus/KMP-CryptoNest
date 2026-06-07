@@ -1,0 +1,126 @@
+package parinexus.kmp.first.trade.presentation.sell
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import parinexus.kmp.first.coins.domain.FetchCoinDetailsUseCase
+import parinexus.kmp.first.portfolio.domain.PortfolioRepository
+import parinexus.kmp.first.trade.domain.SellCoinUseCase
+import parinexus.kmp.first.trade.presentation.common.TradeState
+import parinexus.kmp.first.core.domain.DataError
+import parinexus.kmp.first.core.domain.Result
+import parinexus.kmp.first.core.util.formatFiat
+import parinexus.kmp.first.core.util.toUiText
+import parinexus.kmp.first.trade.presentation.buy.BuyEvents
+import parinexus.kmp.first.trade.presentation.common.UiTradeCoinItem
+import parinexus.kmp.first.trade.presentation.mapper.toCoin
+
+class SellViewModel(
+    private val getCoinDetailsUseCase: FetchCoinDetailsUseCase,
+    private val portfolioRepository: PortfolioRepository,
+    private val sellCoinUseCase: SellCoinUseCase,
+    private val coinId: String,
+) : ViewModel() {
+
+    private val _amount = MutableStateFlow("")
+    private val _state = MutableStateFlow(TradeState())
+    val state = combine(
+        _state,
+        _amount,
+    ) { state, amount ->
+        state.copy(
+            amount = amount
+        )
+    }.onStart {
+        val holding = portfolioRepository.getPortfolioHolding(coinId)
+        if (holding == null) {
+            _state.update {
+                it.copy(
+                    isLoading = false,
+                    error = DataError.Local.INSUFFICIENT_FUNDS.toUiText(),
+                )
+            }
+        } else {
+            getCoinDetails(holding.ownedAmountInUnit)
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(),
+        initialValue = TradeState(isLoading = true)
+    )
+
+    private val _events = Channel<SellEvents>(capacity = Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
+    fun onAmountChanged(amount: String) {
+        _amount.value = amount
+    }
+
+    private suspend fun getCoinDetails(ownedAmountInUnit: Double) {
+        when (val coinResponse = getCoinDetailsUseCase(coinId, forceRefresh = true).first()) {
+            is Result.Success -> {
+                val coin = coinResponse.data.value
+                val availableAmountInFiat = ownedAmountInUnit * coin.price
+                _state.update {
+                    it.copy(
+                        coin = UiTradeCoinItem(
+                            id = coin.coin.id,
+                            name = coin.coin.name,
+                            symbol = coin.coin.symbol,
+                            iconUrl = coin.coin.iconUrl,
+                            price = coin.price,
+                        ),
+                        availableAmount = "Available: ${formatFiat(availableAmountInFiat)}"
+                    )
+                }
+            }
+
+            is Result.Error -> {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = coinResponse.error.toUiText()
+                    )
+                }
+            }
+        }
+    }
+
+    fun onSellClicked() {
+        val tradeCoin = state.value.coin ?: return
+        viewModelScope.launch {
+            val sellCoinResponse = sellCoinUseCase.sellCoin(
+                coin = tradeCoin.toCoin(),
+                amountInFiat = _amount.value.toDouble(),
+                price = tradeCoin.price
+            )
+            when (sellCoinResponse) {
+                is Result.Success -> {
+                    _events.send(SellEvents.SellSuccess)
+                }
+
+                is Result.Error -> {
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = sellCoinResponse.error.toUiText()
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+sealed interface SellEvents {
+    data object SellSuccess : SellEvents
+}
