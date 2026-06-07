@@ -58,41 +58,63 @@ A **Kotlin Multiplatform (KMP)** sample app for managing a simulated crypto port
 
 The project follows **Clean Architecture** with Gradle modules aligned to [Google's modularization guidance](https://developer.android.com/topic/modularization) (Now in Android style).
 
+Each feature module uses **data → domain → presentation** packages. Dependencies always point **inward** (UI → domain ← data). No feature module depends on `composeApp`.
+
+### Layer overview
+
+Three tiers. Arrows show **Gradle dependency direction** (who imports whom).
+
 ```mermaid
 flowchart TB
-    subgraph app [composeApp]
-        APP["App shell · NavHost · Koin · AppInitializer"]
-    end
-    subgraph features [Features]
-        FCA[feature:coins-api]
-        FC[feature:coins]
-        FP[feature:portfolio]
-        FT[feature:trade]
-    end
-    subgraph core [Core]
-        CD[core:domain]
-        CN[core:network]
-        CDB[core:database]
-        CA[core:api]
-        CUI[core:ui]
-        CDS[core:designsystem]
-        CNav[core:navigation]
-        CT[core:testing]
+    subgraph L1["① App shell — composeApp"]
+        APP["NavHost · Koin bootstrap · AppInitializer"]
     end
 
-    APP --> FC & FP & FT & CUI & CDS & CNav
-    FC --> FCA & CA & CDB & CN & CD & CUI & CDS & CNav
-    FP --> FCA & CDB & CD & CUI & CDS
-    FT --> FP & FC & CDB & CD & CUI & CDS & CNav
+    subgraph L2["② Features — screens & use cases"]
+        direction LR
+        FC["feature:coins<br/>market list · detail · chart"]
+        FP["feature:portfolio<br/>holdings · valuation"]
+        FT["feature:trade<br/>buy · sell · history"]
+    end
+
+    subgraph L2b["② Shared feature contract"]
+        FCA["feature:coins-api<br/>CoinsRepository interface"]
+    end
+
+    subgraph L3["③ Core — shared infrastructure"]
+        direction LR
+        CD["core:domain"]
+        CNET["core:network · core:api"]
+        CDB["core:database"]
+        CUI["core:ui · designsystem · navigation"]
+    end
+
+    APP --> FC & FP & FT
+    FC --> FCA
+    FP --> FCA
+    FT --> FP & FC
     FCA --> CD
-    CA --> CN & CD
-    CN --> CD
-    CDB --> CD
-    CUI --> CD & CDS
-    FC & FP & FT -.->|testImplementation| CT
+    FC & FP & FT --> CD & CDB & CNET & CUI
 ```
 
-Each feature module organizes code into **data → domain → presentation** packages. Dependencies point inward; no feature module depends on `composeApp`.
+### How features connect
+
+Only **cross-feature** links (everything else goes through core or `coins-api`).
+
+```mermaid
+flowchart LR
+    TRADE["feature:trade"] -->|"writes portfolio"| PORT["feature:portfolio"]
+    TRADE -->|"reads coin prices"| COINS["feature:coins"]
+    PORT -->|"resolve prices"| API["feature:coins-api"]
+    COINS -->|"implements"| API
+    API --> DOMAIN["core:domain"]
+```
+
+| Rule | Meaning |
+|------|---------|
+| **Portfolio → coins-api** | Portfolio never imports `feature:coins` internals—only the public `CoinsRepository` contract |
+| **Trade → portfolio** | All buy/sell mutations go through `TradePortfolioWriter` in the portfolio data layer |
+| **Trade → coins** | Trade screens need live coin detail/prices from the market feature |
 
 ### Module responsibilities
 
@@ -105,68 +127,141 @@ Each feature module organizes code into **data → domain → presentation** pac
 | **core:ui** | Shared Compose components, formatters, strings |
 | **core:designsystem** | Material 3 theme (`CoinTheme`) |
 | **core:navigation** | Type-safe navigation routes |
-| **core:testing** | Shared test fakes, fixtures, and coroutine rules |
+| **core:testing** | Shared test fakes, fixtures, and coroutine rules (`testImplementation` only) |
 | **feature:coins-api** | Public market contract (`CoinsRepository`, coin models) |
 | **feature:coins** | Market list, detail, chart |
 | **feature:portfolio** | Portfolio screen and repository |
 | **feature:trade** | Buy/sell flows and trade history |
 | **composeApp** | Application entry, platform secrets, Android UI tests |
 
-### Dependency rule
-
-`presentation → domain ← data`. Platform code (`androidMain` / `iosMain`) provides `expect`/`actual` boundaries only (secrets, database builder, system UI).
+Platform code (`androidMain` / `iosMain`) is limited to `expect`/`actual` boundaries: secrets, database builder, and system UI.
 
 ---
 
 ## Key flows
 
-### Market data (offline-first)
+Runtime behavior in three diagrams. Read top-to-bottom / left-to-right in each.
 
-All market reads go through **`CoinsRepository`**. Remote responses are persisted to Room; the UI observes `CachedData<T>` with `DataFreshness` (`Fresh`, `Cached`, `Stale`, `Offline`).
+### 1 · Market data (offline-first)
 
-| Data | TTL | Storage |
-|------|-----|---------|
+UI always reads through **`CoinsRepository`**. Network responses are cached in Room; failures fall back to the last snapshot.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Screen as Coins screen
+    participant Repo as CoinsRepository
+    participant Cache as Room cache
+    participant API as Coinranking API
+
+    User->>Screen: Open grid or pull-to-refresh
+    Screen->>Repo: observeCoins(forceRefresh?)
+    Repo->>Cache: Read cached list
+
+    alt Cache is fresh (< 5 min)
+        Cache-->>Repo: Cached coins
+        Repo-->>Screen: Success · Fresh / Cached
+    else Stale, empty, or forceRefresh
+        Repo->>API: GET /coins
+        API-->>Repo: JSON
+        Repo->>Cache: Upsert entities
+        Repo-->>Screen: Success · Fresh
+    end
+
+    Note over Repo,Cache: On network error → return stale cache if any<br/>TTL: list/detail 5 min · history 15 min
+    Screen-->>User: Render grid + freshness badge
+```
+
+| Data | TTL | Room entity |
+|------|-----|-------------|
 | Coin list & detail | 5 min | `CachedCoinEntity`, `CachedCoinDetailEntity` |
 | Price history | 15 min | `CachedPriceHistoryEntity` |
 | Trade records | Permanent | `TradeRecordEntity` |
 
-On network failure, the repository serves the last cached snapshot when available. Pull-to-refresh passes `forceRefresh = true`.
+### 2 · Portfolio valuation
 
-### Portfolio valuation
+**`observePortfolioSnapshot()`** merges holdings, live prices, and cash into one reactive stream.
 
-`observePortfolioSnapshot()` combines:
+```mermaid
+flowchart TD
+    START([PortfolioViewModel subscribes]) --> OBS[observePortfolioSnapshot]
+    OBS --> HOLD[Stream: holdings from Room]
+    OBS --> CASH[Stream: cash balance from Room]
 
-1. **Priced holdings** — `resolveMarketPrices()` runs only when holdings change (`distinctUntilChanged` on coin id, amount, and average cost).
-2. **Cash balance** — reactive stream from `UserBalanceDao.observeCashBalance()`.
+    HOLD --> CHANGED{Holdings changed?<br/>id · amount · avg cost}
+    CHANGED -->|No| REUSE[Keep last resolved prices]
+    CHANGED -->|Yes| PRICES[CoinsRepository.resolveMarketPrices]
+    PRICES -->|API unavailable| FALLBACK[Use averagePurchasePrice per coin]
+    PRICES -->|Success| LIVE[Use live market prices]
 
-Cash-only updates after buy/sell **do not** trigger a new price resolution pass.
+    REUSE --> SNAP[Build PortfolioSnapshot]
+    FALLBACK --> SNAP
+    LIVE --> SNAP
+    CASH --> SNAP
 
-When market prices are unavailable, valuation falls back to `averagePurchasePrice` per holding.
+    SNAP --> UI[Total Balance = cash + holdings value<br/>holdings breakdown on screen]
 
-### Trade execution (atomic writes)
+    style CHANGED fill:#f9f9f9,stroke:#666
+```
 
-Buy and sell use **`TradePortfolioWriter`**, the sole production path for portfolio mutations:
+Cash-only updates after a trade **skip** the price API (`distinctUntilChanged` on holdings).
 
-| Step | Behavior |
-|------|----------|
-| Buy | `deductCash(amount)` with SQL guard → upsert holding → insert trade record |
-| Sell | Update or remove holding → `addCash(amount)` → insert trade record |
-| Failure | `InsufficientFundsException` on buy when balance is insufficient; mapped to `DataError.Local.INSUFFICIENT_FUNDS` |
+### 3 · Trade execution (atomic write)
 
-All steps run inside a Room **`@Transaction`**.
+**`TradePortfolioWriter`** is the only production path that mutates holdings, cash, or the trade ledger.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Screen as Buy / Sell screen
+    participant Writer as TradePortfolioWriter
+    participant DB as Room @Transaction
+
+    User->>Screen: Confirm trade
+    Screen->>Writer: buyCoin / sellCoin
+
+    rect rgb(245, 245, 245)
+        Note over Writer,DB: Single @Transaction block
+        alt Buy
+            Writer->>DB: deductCash — SQL guard rejects overdraft
+            Writer->>DB: upsert holding
+        else Sell
+            Writer->>DB: update or remove holding
+            Writer->>DB: addCash
+        end
+        Writer->>DB: insert TradeRecordEntity
+    end
+
+    alt Insufficient funds (buy)
+        DB-->>Screen: INSUFFICIENT_FUNDS error
+    else Success
+        DB-->>Screen: OK → navigate to Portfolio
+    end
+```
 
 ### App bootstrap
 
-`AppInitializer` seeds the default cash balance (`$10,000`) once on startup via `PortfolioRepository.initUserBalance()`. Invoked from `CoinApplication` (Android) and `MainViewController` (iOS)—not from presentation layer.
+On first launch, **`AppInitializer`** seeds `$10,000` cash via `PortfolioRepository.initUserBalance()`.
+
+```mermaid
+flowchart LR
+    A[Platform entry<br/>CoinApplication / MainViewController] -->|initKoin| B[App.kt · KoinContext]
+    B -->|LaunchedEffect| C[AppInitializer.initialize]
+    C --> D[Room: default cash row if missing]
+```
+
+Koin starts on the platform; seeding runs from `App.kt`—not from ViewModels.
 
 ### Domain models (portfolio vs trade)
 
-| Model | Purpose |
-|-------|---------|
-| **`PortfolioHolding`** | Persisted position (units + average cost). Used by buy/sell—no live market price. |
-| **`PortfolioCoinModel`** | UI model with `marketValueFiat` and performance %. |
-| **`PortfolioSnapshot`** | Reactive read model: holdings, cash, `portfolioMarketValue`, `totalBalance`. |
-| **`TradePortfolioWriter`** | Atomic buy/sell + ledger writes. |
+| Model | Layer | Role |
+|-------|-------|------|
+| **`PortfolioHolding`** | Domain / DB | Persisted units + average cost (no live price) |
+| **`PortfolioCoinModel`** | Domain / UI | Holding + `marketValueFiat` + performance % |
+| **`PortfolioSnapshot`** | Domain | Read model: coins, cash, `totalBalance` |
+| **`TradePortfolioWriter`** | Data | Atomic buy/sell + ledger writes |
 
 ---
 
