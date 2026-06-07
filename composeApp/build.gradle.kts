@@ -1,4 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
@@ -9,8 +8,6 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.room)
-    alias(libs.plugins.ksp)
 }
 
 kotlin {
@@ -24,7 +21,7 @@ kotlin {
     listOf(
         iosX64(),
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
@@ -32,18 +29,34 @@ kotlin {
         }
     }
 
-    sourceSets {
+    applyDefaultHierarchyTemplate()
 
+    sourceSets {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.kotlinx.coroutines.core)
             implementation(libs.ktor.android)
+            implementation(libs.room.runtime)
             implementation(libs.koin.android)
             implementation(libs.koin.androidx.compose)
             implementation(libs.biometric)
             implementation(libs.accompanist.systemuicontroller)
+            implementation(projects.core.network)
+            implementation(projects.core.database)
         }
         commonMain.dependencies {
+            implementation(projects.core.domain)
+            implementation(projects.core.network)
+            implementation(projects.core.database)
+            implementation(projects.core.api)
+            implementation(projects.core.ui)
+            implementation(projects.core.designsystem)
+            implementation(projects.core.navigation)
+            implementation(projects.feature.coins)
+            implementation(projects.feature.portfolio)
+            implementation(projects.feature.trade)
+
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -51,33 +64,21 @@ kotlin {
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
 
-            implementation(libs.kotlin.date.time)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.kotlinx.serialization.json)
-            implementation(libs.bundles.ktor)
-            implementation(libs.room.runtime)
-            implementation(libs.sqlite.bundled)
-
             api(libs.koin.core)
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.koin.compose.navigation)
-
-            implementation(libs.coil.compose.core)
-            implementation(libs.coil.compose)
-            implementation(libs.coil.core)
-            implementation(libs.coil.svg)
-            implementation(libs.coil.network.ktor)
         }
         iosMain.dependencies {
             implementation(libs.ktor.ios)
-        }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.test.assertk)
-            implementation(libs.test.turbine)
+            implementation(libs.room.runtime)
+            implementation(libs.koin.core)
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(projects.core.network)
+            implementation(projects.core.database)
         }
         androidInstrumentedTest {
             dependsOn(commonTest.get())
@@ -91,11 +92,8 @@ kotlin {
             implementation(libs.test.androidx.runner)
             implementation(libs.test.androidx.ext.junit)
             implementation(libs.test.androidx.rules)
-        }
-        androidUnitTest.dependencies {
-            implementation(libs.kotlin.test)
-            implementation(libs.kotlin.test.junit)
-            implementation(libs.test.assertk)
+            implementation(projects.core.ui)
+            implementation(projects.feature.coins)
         }
     }
 }
@@ -143,12 +141,7 @@ android {
     }
 }
 
-room {
-    schemaDirectory("$projectDir/schemas")
-}
-
 dependencies {
-    ksp(libs.room.compiler)
     debugImplementation(compose.uiTooling)
 }
 
