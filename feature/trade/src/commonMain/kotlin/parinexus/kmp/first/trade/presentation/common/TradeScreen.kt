@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import parinexus.kmp.first.theme.CoinTheme
 import parinexus.kmp.first.theme.LocalCoinColorsPalette
 import parinexus.kmp.first.trade.presentation.common.component.rememberCurrencyVisualTransformation
 
@@ -161,51 +162,50 @@ fun TradeScreen(
     }
 }
 
-
 @Preview
 @Composable
-fun PreviewTradeScreenBuy() {
-    val mockState = TradeState(
-        coin = UiTradeCoinItem(
-            symbol = "Bitcoin",
-            id = "Bitcoin",
-            name = "Bitcoin",
-            iconUrl = "https://cryptologos.cc/logos/bitcoin-btc-logo.png",
-            price = 34.7
-        ),
-        amount = "",
-        availableAmount = "$150.00"
-    )
-
-    TradeScreen(
-        state = mockState,
-        tradeType = TradeType.BUY,
-        onAmountChange = {},
-        onSubmitClicked = {}
-    )
+private fun PreviewTradeScreenBuy() {
+    CoinTheme {
+        TradeScreen(
+            state = TradeState(
+                coin = UiTradeCoinItem(
+                    symbol = "BTC",
+                    id = "bitcoin",
+                    name = "Bitcoin",
+                    iconUrl = "https://cryptologos.cc/logos/bitcoin-btc-logo.png",
+                    price = 34.7,
+                ),
+                amount = "",
+                availableAmount = "$150.00",
+            ),
+            tradeType = TradeType.BUY,
+            onAmountChange = {},
+            onSubmitClicked = {},
+        )
+    }
 }
 
 @Preview
 @Composable
-fun PreviewTradeScreenSell() {
-    val mockState = TradeState(
-        coin = UiTradeCoinItem(
-            id = "Cardano",
-            symbol = "Cardano",
-            name = "Cardano",
-            iconUrl = "https://cryptologos.cc/logos/cardano-ada-logo.png",
-            price = 10.2
-        ),
-        amount = "",
-        availableAmount = "$25.23"
-    )
-
-    TradeScreen(
-        state = mockState,
-        tradeType = TradeType.SELL,
-        onAmountChange = {},
-        onSubmitClicked = {}
-    )
+private fun PreviewTradeScreenSell() {
+    CoinTheme {
+        TradeScreen(
+            state = TradeState(
+                coin = UiTradeCoinItem(
+                    id = "cardano",
+                    symbol = "ADA",
+                    name = "Cardano",
+                    iconUrl = "https://cryptologos.cc/logos/cardano-ada-logo.png",
+                    price = 10.2,
+                ),
+                amount = "",
+                availableAmount = "$25.23",
+            ),
+            tradeType = TradeType.SELL,
+            onAmountChange = {},
+            onSubmitClicked = {},
+        )
+    }
 }
 
 

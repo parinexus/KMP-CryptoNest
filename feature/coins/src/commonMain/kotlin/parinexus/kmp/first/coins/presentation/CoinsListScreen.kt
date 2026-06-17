@@ -61,6 +61,7 @@ import parinexus.kmp.first.coins.presentation.component.PerformanceChart
 import parinexus.kmp.first.core.presentation.component.ApiContentStateLayout
 import parinexus.kmp.first.core.presentation.component.MarketCacheBanner
 import parinexus.kmp.first.core.testing.CoinTestTags
+import parinexus.kmp.first.theme.CoinTheme
 import parinexus.kmp.first.theme.LocalCoinColorsPalette
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -71,10 +72,30 @@ fun CoinsGridScreen(
     val coinViewModel = koinViewModel<CoinsListViewModel>()
     val state by coinViewModel.state.collectAsStateWithLifecycle()
 
+    CoinsGridContent(
+        state = state,
+        onCoinClicked = onCoinClicked,
+        onRefresh = coinViewModel::onRefresh,
+        onRetryLoadCoins = coinViewModel::onRetryLoadCoins,
+        onCoinLongPressed = coinViewModel::onCoinLongPressed,
+        onDismissChart = coinViewModel::onDismissChart,
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun CoinsGridContent(
+    state: CoinsState,
+    onCoinClicked: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onRetryLoadCoins: () -> Unit,
+    onCoinLongPressed: (String) -> Unit,
+    onDismissChart: () -> Unit,
+) {
     state.chartState?.let { chartState ->
         CoinChartDialog(
             uiChartState = chartState,
-            onDismiss = { coinViewModel.onDismissChart() },
+            onDismiss = onDismissChart,
         )
     }
 
@@ -100,7 +121,7 @@ fun CoinsGridScreen(
 
         PullToRefreshBox(
             isRefreshing = state.isRefreshing,
-            onRefresh = { coinViewModel.onRefresh() },
+            onRefresh = onRefresh,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
@@ -110,7 +131,7 @@ fun CoinsGridScreen(
             errorMessage = (state.content as? CoinsListContent.Error)?.message,
             isEmpty = state.content is CoinsListContent.Empty,
             emptyMessage = "No coins available right now.",
-            onRetry = { coinViewModel.onRetryLoadCoins() },
+            onRetry = onRetryLoadCoins,
             modifier = Modifier
                 .fillMaxSize()
                 .then(
@@ -155,7 +176,7 @@ fun CoinsGridScreen(
                     CoinGridItem(
                         coin = coin,
                         onCoinClicked = onCoinClicked,
-                        onCoinLongPressed = { coinId -> coinViewModel.onCoinLongPressed(coinId) },
+                        onCoinLongPressed = onCoinLongPressed,
                     )
                 }
             }
@@ -323,12 +344,54 @@ fun CoinGridItem(
     }
 }
 
+private val previewCoins = listOf(
+    CoinUiModel(
+        id = "bitcoin",
+        name = "Bitcoin",
+        symbol = "BTC",
+        iconUrl = "https://cryptologos.cc/logos/bitcoin-btc-logo.png",
+        formattedPrice = "$50,000.00",
+        formattedChange = "+2.50%",
+        isPositive = true,
+    ),
+    CoinUiModel(
+        id = "ethereum",
+        name = "Ethereum",
+        symbol = "ETH",
+        iconUrl = "https://cryptologos.cc/logos/ethereum-eth-logo.png",
+        formattedPrice = "$3,200.00",
+        formattedChange = "-1.20%",
+        isPositive = false,
+    ),
+)
+
 @Preview
 @Composable
 private fun CoinsGridPreview() {
-    CoinsGridScreen(
-        onCoinClicked = {},
-    )
+    CoinTheme {
+        CoinsGridContent(
+            state = CoinsState(
+                content = CoinsListContent.Success(coins = previewCoins),
+            ),
+            onCoinClicked = {},
+            onRefresh = {},
+            onRetryLoadCoins = {},
+            onCoinLongPressed = {},
+            onDismissChart = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun CoinGridItemPreview() {
+    CoinTheme {
+        CoinGridItem(
+            coin = previewCoins.first(),
+            onCoinClicked = {},
+            onCoinLongPressed = {},
+        )
+    }
 }
 
 @Composable

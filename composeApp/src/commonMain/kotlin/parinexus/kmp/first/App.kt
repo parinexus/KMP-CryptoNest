@@ -7,7 +7,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.KoinContext
 import org.koin.compose.koinInject
 import parinexus.kmp.first.coins.presentation.CoinsGridScreen
@@ -28,7 +27,6 @@ import parinexus.kmp.first.trade.presentation.history.TradeHistoryScreen
 import parinexus.kmp.first.trade.presentation.sell.SellScreen
 
 @Composable
-@Preview
 fun App() {
     KoinContext {
         AppBootstrap()
